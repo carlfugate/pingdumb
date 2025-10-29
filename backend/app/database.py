@@ -5,8 +5,12 @@ from datetime import datetime
 from typing import List, Optional
 from .models import TestConfig, TestResult
 
+import os
+
 class Database:
-    def __init__(self, db_path: str = "network_tests.db"):
+    def __init__(self, db_path: str = None):
+        if db_path is None:
+            db_path = os.getenv('DB_PATH', 'network_tests.db')
         self.db_path = db_path
     
     async def init_db(self):

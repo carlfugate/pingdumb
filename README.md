@@ -2,6 +2,14 @@
 
 A modern network monitoring tool with web interface for local network diagnostics.
 
+## Screenshots
+
+### Dashboard
+![Dashboard](dashboard.png)
+
+### Network Tests
+![Network Tests](network-tests.png)
+
 ## Features
 - Real-time network testing (ping, traceroute, DNS)
 - Service monitoring (HTTP/HTTPS checks)

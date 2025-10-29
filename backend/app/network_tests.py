@@ -241,21 +241,37 @@ class NetworkTester:
             async with session.get('https://fast.com/') as response:
                 html = await response.text()
                 
-            # Extract token from the HTML (simple regex approach)
+            # Extract token from the HTML (try multiple patterns)
             import re
-            token_match = re.search(r'token:"([^"]+)"', html)
-            if not token_match:
-                raise Exception("Could not extract Fast.com token")
+            token = None
             
-            token = token_match.group(1)
+            # Try different token patterns
+            patterns = [
+                r'token:"([^"]+)"',
+                r'token\s*:\s*"([^"]+)"',
+                r'"token"\s*:\s*"([^"]+)"',
+                r'token=([a-zA-Z0-9]+)',
+                r'speedtest.*?token.*?"([^"]+)"'
+            ]
+            
+            for pattern in patterns:
+                token_match = re.search(pattern, html, re.IGNORECASE)
+                if token_match:
+                    token = token_match.group(1)
+                    break
+            
+            if not token:
+                raise Exception("Could not extract Fast.com token from HTML")
             
             # Step 2: Get download URLs
             api_url = f'https://api.fast.com/netflix/speedtest/v2?https=true&token={token}&urlCount=3'
             async with session.get(api_url) as response:
+                if response.status != 200:
+                    raise Exception(f"API request failed with status {response.status}")
                 data = await response.json()
             
             if not data or len(data) == 0:
-                raise Exception("No download URLs received")
+                raise Exception("No download URLs received from API")
             
             # Step 3: Download test files and measure speed
             download_speeds = []
@@ -267,27 +283,35 @@ class NetworkTester:
                 start_time = time.time()
                 bytes_downloaded = 0
                 
-                async with session.get(url) as response:
-                    async for chunk in response.content.iter_chunked(8192):
-                        bytes_downloaded += len(chunk)
-                        elapsed = time.time() - start_time
-                        
-                        # Stop after test duration
-                        if elapsed >= test_duration:
-                            break
-                
-                if elapsed > 0:
-                    speed_mbps = (bytes_downloaded * 8) / (elapsed * 1000000)  # Convert to Mbps
-                    download_speeds.append(speed_mbps)
+                try:
+                    async with session.get(url) as response:
+                        async for chunk in response.content.iter_chunked(8192):
+                            bytes_downloaded += len(chunk)
+                            elapsed = time.time() - start_time
+                            
+                            # Stop after test duration
+                            if elapsed >= test_duration:
+                                break
+                    
+                    if elapsed > 0:
+                        speed_mbps = (bytes_downloaded * 8) / (elapsed * 1000000)  # Convert to Mbps
+                        download_speeds.append(speed_mbps)
+                except Exception as e:
+                    print(f"Error downloading from {url}: {e}")
+                    continue
+            
+            if not download_speeds:
+                raise Exception("No successful speed measurements")
             
             # Calculate average speed
-            avg_speed = sum(download_speeds) / len(download_speeds) if download_speeds else 0
+            avg_speed = sum(download_speeds) / len(download_speeds)
             
             return {
                 'download_mbps': avg_speed,
                 'upload_mbps': 0,  # Fast.com primarily tests download
                 'test_duration': test_duration,
-                'urls_tested': len(download_speeds)
+                'urls_tested': len(download_speeds),
+                'token_used': token[:8] + "..." if len(token) > 8 else token
             }
             
         except Exception as e:

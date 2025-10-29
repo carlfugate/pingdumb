@@ -6,7 +6,7 @@ from typing import List, Optional
 from .models import TestConfig, TestResult
 
 class Database:
-    def __init__(self, db_path: str = "nmon.db"):
+    def __init__(self, db_path: str = "network_tests.db"):
         self.db_path = db_path
     
     async def init_db(self):
@@ -139,7 +139,7 @@ class Database:
         conn.commit()
         conn.close()
     
-    async def get_recent_results(self, limit: int = 100) -> List[TestResult]:
+    async def get_recent_results(self, limit: int = 1000) -> List[TestResult]:
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
         
@@ -150,6 +150,49 @@ class Database:
         ''', (limit,))
         
         rows = cursor.fetchall()
+        conn.close()
+        
+        results = []
+        for row in rows:
+            results.append(TestResult(
+                id=row[0],
+                config_id=row[1],
+                timestamp=datetime.fromisoformat(row[2]),
+                success=bool(row[3]),
+                response_time=row[4],
+                error=row[5],
+                data=json.loads(row[6]) if row[6] else None
+            ))
+        
+        return results
+    
+    async def get_results_by_timerange(self, hours: int = 24, limit: int = 1000) -> List[TestResult]:
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        
+        cursor.execute('''
+            SELECT * FROM test_results 
+            WHERE timestamp >= datetime('now', '-{} hours')
+            ORDER BY timestamp DESC 
+            LIMIT ?
+        '''.format(hours), (limit,))
+        
+        rows = cursor.fetchall()
+        conn.close()
+        
+        results = []
+        for row in rows:
+            results.append(TestResult(
+                id=row[0],
+                config_id=row[1],
+                timestamp=datetime.fromisoformat(row[2]),
+                success=bool(row[3]),
+                response_time=row[4],
+                error=row[5],
+                data=json.loads(row[6]) if row[6] else None
+            ))
+        
+        return results
         conn.close()
         
         results = []

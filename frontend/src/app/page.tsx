@@ -44,6 +44,20 @@ export default function Dashboard() {
   const [selectedConfigId, setSelectedConfigId] = useState<string>('all') // Filter by test config
   const [timeRange, setTimeRange] = useState('1h') // Time range filter
   const [timezone, setTimezone] = useState('America/Chicago') // Default to Central US time
+
+  // Load timezone from localStorage on mount
+  useEffect(() => {
+    const savedTimezone = localStorage.getItem('pingdumb-timezone')
+    if (savedTimezone) {
+      setTimezone(savedTimezone)
+    }
+  }, [])
+
+  // Save timezone to localStorage when changed
+  const handleTimezoneChange = (newTimezone: string) => {
+    setTimezone(newTimezone)
+    localStorage.setItem('pingdumb-timezone', newTimezone)
+  }
   const [ws, setWs] = useState<WebSocket | null>(null)
 
   useEffect(() => {
@@ -217,7 +231,7 @@ export default function Dashboard() {
           </div>
           <div className="flex items-center space-x-2">
             <Label htmlFor="timezone">Timezone:</Label>
-            <Select value={timezone} onValueChange={setTimezone}>
+            <Select value={timezone} onValueChange={handleTimezoneChange}>
               <SelectTrigger className="w-48">
                 <SelectValue />
               </SelectTrigger>

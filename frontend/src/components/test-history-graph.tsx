@@ -72,7 +72,22 @@ export function TestHistoryGraph({ config, results, globalTimeFrame }: TestHisto
     .filter(r => new Date(r.timestamp) >= cutoffTime) // Filter by time frame
     .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()) // Sort chronologically
     .map(r => {
-      const time = new Date(r.timestamp).toLocaleTimeString()
+      // Format time based on time frame
+      const date = new Date(r.timestamp)
+      let time: string
+      
+      const timeFrameMinutes = parseInt(effectiveTimeFrame)
+      if (timeFrameMinutes <= 60) {
+        // Short periods: show time only
+        time = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      } else if (timeFrameMinutes <= 1440) {
+        // Medium periods: show time with AM/PM
+        time = date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
+      } else {
+        // Long periods: show date and time
+        time = date.toLocaleDateString([], { month: 'short', day: 'numeric' }) + ' ' + 
+               date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
+      }
       
       // Handle speedtest types differently
       if (config.test_type === 'speedtest_ookla') {
@@ -190,7 +205,10 @@ export function TestHistoryGraph({ config, results, globalTimeFrame }: TestHisto
             <XAxis 
               dataKey="time" 
               tick={{ fontSize: 10 }}
-              interval="preserveStartEnd"
+              interval={configResults.length > 20 ? Math.floor(configResults.length / 10) : 'preserveStartEnd'}
+              angle={parseInt(effectiveTimeFrame) > 1440 ? -45 : 0}
+              textAnchor={parseInt(effectiveTimeFrame) > 1440 ? 'end' : 'middle'}
+              height={parseInt(effectiveTimeFrame) > 1440 ? 60 : 30}
             />
             <YAxis 
               tick={{ fontSize: 10 }}

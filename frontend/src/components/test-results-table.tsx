@@ -33,6 +33,7 @@ interface TestResultsTableProps {
   setTimeRange: (value: string) => void
   selectedConfigId: string
   setSelectedConfigId: (value: string) => void
+  timezone: string
 }
 
 export function TestResultsTable({ 
@@ -41,7 +42,8 @@ export function TestResultsTable({
   timeRange, 
   setTimeRange, 
   selectedConfigId, 
-  setSelectedConfigId 
+  setSelectedConfigId,
+  timezone
 }: TestResultsTableProps) {
   const [expandedResults, setExpandedResults] = useState<Set<string>>(new Set())
 
@@ -67,7 +69,7 @@ export function TestResultsTable({
   const formatTimestamp = (timestamp: string) => {
     const date = new Date(timestamp)
     return date.toLocaleString('en-US', {
-      timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      timeZone: timezone,
       hour12: true,
       year: 'numeric',
       month: '2-digit',

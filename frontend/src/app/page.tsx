@@ -43,6 +43,7 @@ export default function Dashboard() {
   const [globalTimeFrame, setGlobalTimeFrame] = useState('60') // Global time frame in minutes
   const [selectedConfigId, setSelectedConfigId] = useState<string>('all') // Filter by test config
   const [timeRange, setTimeRange] = useState('1h') // Time range filter
+  const [timezone, setTimezone] = useState('America/Chicago') // Default to Central US time
   const [ws, setWs] = useState<WebSocket | null>(null)
 
   useEffect(() => {
@@ -214,6 +215,24 @@ export default function Dashboard() {
             <h1 className="text-3xl font-bold">pingdumb</h1>
             <p className="text-muted-foreground">Real-time network diagnostics and monitoring</p>
           </div>
+          <div className="flex items-center space-x-2">
+            <Label htmlFor="timezone">Timezone:</Label>
+            <Select value={timezone} onValueChange={setTimezone}>
+              <SelectTrigger className="w-48">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="America/Chicago">Central US (Chicago)</SelectItem>
+                <SelectItem value="America/New_York">Eastern US (New York)</SelectItem>
+                <SelectItem value="America/Denver">Mountain US (Denver)</SelectItem>
+                <SelectItem value="America/Los_Angeles">Pacific US (Los Angeles)</SelectItem>
+                <SelectItem value="UTC">UTC</SelectItem>
+                <SelectItem value="Europe/London">London</SelectItem>
+                <SelectItem value="Europe/Paris">Paris</SelectItem>
+                <SelectItem value="Asia/Tokyo">Tokyo</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
 
         <Tabs defaultValue="overview" className="w-full">
@@ -357,6 +376,7 @@ export default function Dashboard() {
               setTimeRange={setTimeRange}
               selectedConfigId={selectedConfigId}
               setSelectedConfigId={setSelectedConfigId}
+              timezone={timezone}
             />
           </TabsContent>
 

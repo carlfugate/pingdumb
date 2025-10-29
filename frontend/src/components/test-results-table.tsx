@@ -221,6 +221,49 @@ export function TestResultsTable({
           </div>
         )
 
+      case 'speedtest_ookla':
+        return (
+          <div className="flex items-center space-x-2">
+            <Activity className="w-4 h-4 text-blue-600" />
+            <div className="text-sm">
+              <div className="flex space-x-4">
+                <span>↓ <strong>{data.download_mbps?.toFixed(1)}Mbps</strong></span>
+                <span>↑ <strong>{data.upload_mbps?.toFixed(1)}Mbps</strong></span>
+                <span>⚡ <strong>{data.ping_ms?.toFixed(0)}ms</strong></span>
+              </div>
+              <div className="text-xs text-muted-foreground">
+                Server: {data.server}
+              </div>
+            </div>
+          </div>
+        )
+
+      case 'speedtest_fast':
+        return (
+          <div className="flex items-center space-x-2">
+            <Activity className="w-4 h-4 text-red-600" />
+            <div className="text-sm">
+              <div>↓ <strong>{data.download_mbps?.toFixed(1)}Mbps</strong></div>
+              <div className="text-xs text-muted-foreground">
+                Fast.com (Netflix)
+              </div>
+            </div>
+          </div>
+        )
+
+      case 'iperf3':
+        return (
+          <div className="flex items-center space-x-2">
+            <Activity className="w-4 h-4 text-green-600" />
+            <div className="text-sm">
+              <div><strong>{data.bandwidth_mbps?.toFixed(1)}Mbps</strong> ({data.direction})</div>
+              <div className="text-xs text-muted-foreground">
+                {data.retransmits || 0} retransmits, {data.jitter_ms?.toFixed(1)}ms jitter
+              </div>
+            </div>
+          </div>
+        )
+
       default:
         return (
           <div className="text-sm text-muted-foreground">
@@ -236,6 +279,9 @@ export function TestResultsTable({
       case 'http': return <Globe className="w-4 h-4" />
       case 'dns': return <Server className="w-4 h-4" />
       case 'traceroute': return <Activity className="w-4 h-4" />
+      case 'speedtest_ookla': return <Activity className="w-4 h-4 text-blue-600" />
+      case 'speedtest_fast': return <Activity className="w-4 h-4 text-red-600" />
+      case 'iperf3': return <Activity className="w-4 h-4 text-green-600" />
       default: return <Clock className="w-4 h-4" />
     }
   }

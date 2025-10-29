@@ -92,6 +92,17 @@ export function TestConfigDialog({ open, onOpenChange, onSave, editingConfig }: 
       { label: 'Google.com', value: 'google.com' },
       { label: 'AWS', value: 'aws.amazon.com' },
       { label: 'Cloudflare', value: '1.1.1.1' }
+    ],
+    speedtest_ookla: [
+      { label: 'Auto Server', value: 'auto' },
+      { label: 'Specific Server', value: '12345' }
+    ],
+    speedtest_fast: [
+      { label: 'Default', value: 'default' }
+    ],
+    iperf3: [
+      { label: 'Local Server', value: 'localhost:5201' },
+      { label: 'Custom Server', value: 'server.example.com:5201' }
     ]
   }
 
@@ -100,7 +111,9 @@ export function TestConfigDialog({ open, onOpenChange, onSave, editingConfig }: 
     { label: '30s', value: 30 },
     { label: '1m', value: 60 },
     { label: '5m', value: 300 },
-    { label: '15m', value: 900 }
+    { label: '15m', value: 900 },
+    { label: '30m', value: 1800 },
+    { label: '1h', value: 3600 }
   ]
 
   return (
@@ -138,6 +151,9 @@ export function TestConfigDialog({ open, onOpenChange, onSave, editingConfig }: 
                   <SelectItem value="http">HTTP/HTTPS</SelectItem>
                   <SelectItem value="dns">DNS Lookup</SelectItem>
                   <SelectItem value="traceroute">Traceroute</SelectItem>
+                  <SelectItem value="speedtest_ookla">Speedtest (Ookla)</SelectItem>
+                  <SelectItem value="speedtest_fast">Speedtest (Fast.com)</SelectItem>
+                  <SelectItem value="iperf3">iPerf3 Bandwidth</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -153,6 +169,9 @@ export function TestConfigDialog({ open, onOpenChange, onSave, editingConfig }: 
                 formData.test_type === 'ping' ? 'IP address or hostname' :
                 formData.test_type === 'http' ? 'https://example.com' :
                 formData.test_type === 'dns' ? 'domain.com:A' :
+                formData.test_type === 'speedtest_ookla' ? 'auto or server ID' :
+                formData.test_type === 'speedtest_fast' ? 'default' :
+                formData.test_type === 'iperf3' ? 'server:port' :
                 'IP address or hostname'
               }
               required

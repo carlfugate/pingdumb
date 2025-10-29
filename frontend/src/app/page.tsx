@@ -245,6 +245,18 @@ export default function Dashboard() {
       return `${data.answers?.length || 0} records`
     }
     
+    if (result.config_id && configs.find(c => c.id === result.config_id)?.test_type === 'speedtest_ookla') {
+      return `↓${data.download_mbps?.toFixed(1)}Mbps ↑${data.upload_mbps?.toFixed(1)}Mbps ${data.ping_ms?.toFixed(0)}ms`
+    }
+    
+    if (result.config_id && configs.find(c => c.id === result.config_id)?.test_type === 'speedtest_fast') {
+      return `↓${data.download_mbps?.toFixed(1)}Mbps`
+    }
+    
+    if (result.config_id && configs.find(c => c.id === result.config_id)?.test_type === 'iperf3') {
+      return `${data.bandwidth_mbps?.toFixed(1)}Mbps ${data.direction} (${data.retransmits || 0} retx)`
+    }
+    
     return 'Success'
   }
 

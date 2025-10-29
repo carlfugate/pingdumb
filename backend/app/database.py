@@ -136,7 +136,7 @@ class Database:
         cursor.execute('''
             INSERT INTO test_results (id, config_id, timestamp, success, response_time, error, data)
             VALUES (?, ?, ?, ?, ?, ?, ?)
-        ''', (result.id, result.config_id, result.timestamp.isoformat(),
+        ''', (result.id, result.config_id, result.timestamp.isoformat() + 'Z',
               result.success, result.response_time, result.error,
               json.dumps(result.data) if result.data else None))
         

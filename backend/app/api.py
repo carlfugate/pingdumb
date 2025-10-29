@@ -4,6 +4,7 @@ from fastapi.responses import JSONResponse
 import asyncio
 import json
 from typing import List, Optional
+from datetime import datetime, timedelta
 from .models import TestConfig, TestResult, TestType
 from .network_tests import NetworkTester
 from .database import Database
@@ -22,10 +23,14 @@ db = Database()
 tester = NetworkTester()
 active_connections: List[WebSocket] = []
 
+# Task scheduler state
+task_schedule = {}  # {config_id: next_run_time}
+running_tasks = set()  # Track currently running tests
+
 @app.on_event("startup")
 async def startup():
     await db.init_db()
-    asyncio.create_task(monitoring_loop())
+    asyncio.create_task(scheduler_loop())
 
 @app.get("/api/health")
 async def health():
@@ -48,6 +53,7 @@ async def create_config(config_data: dict):
         dns_servers=config_data.get("dns_servers")
     )
     result = await db.save_config(config)
+    update_task_schedule(result)  # Add to scheduler
     return result.dict()
 
 @app.put("/api/configs/{config_id}")
@@ -62,12 +68,14 @@ async def update_config(config_id: str, config_data: dict):
         enabled=config_data.get("enabled", True),
         dns_servers=config_data.get("dns_servers")
     )
-    result = await db.save_config(config)
+    result = await db.update_config(config)
+    update_task_schedule(result)  # Update scheduler
     return result.dict()
 
 @app.delete("/api/configs/{config_id}")
 async def delete_config(config_id: str):
     await db.delete_config(config_id)
+    remove_from_schedule(config_id)  # Remove from scheduler
     return {"status": "deleted"}
 
 @app.get("/api/results")
@@ -100,16 +108,68 @@ async def broadcast_result(result: TestResult):
             except:
                 active_connections.remove(connection)
 
-async def monitoring_loop():
+async def scheduler_loop():
+    """Main scheduler loop that respects individual test intervals"""
     while True:
         try:
+            now = datetime.utcnow()
             configs = await db.get_configs()
+            
             for config in configs:
-                if config.enabled:
-                    result = await tester.run_test(config)
-                    await db.save_result(result)
-                    await broadcast_result(result)
-            await asyncio.sleep(30)
+                if not config.enabled:
+                    continue
+                    
+                # Skip if test is currently running
+                if config.id in running_tasks:
+                    continue
+                
+                # Check if it's time to run this test
+                next_run = task_schedule.get(config.id, now)
+                if now >= next_run:
+                    # Schedule the test
+                    asyncio.create_task(run_scheduled_test(config))
+                    
+            await asyncio.sleep(10)  # Check every 10 seconds
         except Exception as e:
-            print(f"Monitoring error: {e}")
-            await asyncio.sleep(30)
+            print(f"Scheduler error: {e}")
+            await asyncio.sleep(10)
+
+async def run_scheduled_test(config: TestConfig):
+    """Run a single test and handle scheduling"""
+    try:
+        # Mark as running
+        running_tasks.add(config.id)
+        
+        # Run the test
+        result = await tester.run_test(config)
+        await db.save_result(result)
+        await broadcast_result(result)
+        
+        # Schedule next run
+        next_run = datetime.utcnow() + timedelta(seconds=config.interval)
+        task_schedule[config.id] = next_run
+        
+    except Exception as e:
+        print(f"Test error for {config.name}: {e}")
+        # Still schedule next run even on error
+        next_run = datetime.utcnow() + timedelta(seconds=config.interval)
+        task_schedule[config.id] = next_run
+    finally:
+        # Mark as no longer running
+        running_tasks.discard(config.id)
+
+def update_task_schedule(config: TestConfig):
+    """Update scheduling for a config (called when config is added/updated)"""
+    if config.enabled:
+        # Schedule to run immediately if new, or keep existing schedule
+        if config.id not in task_schedule:
+            task_schedule[config.id] = datetime.utcnow()
+    else:
+        # Remove from schedule if disabled
+        task_schedule.pop(config.id, None)
+        running_tasks.discard(config.id)
+
+def remove_from_schedule(config_id: str):
+    """Remove a config from scheduling (called when config is deleted)"""
+    task_schedule.pop(config_id, None)
+    running_tasks.discard(config_id)

@@ -13,7 +13,7 @@ import { TestHistoryGraph } from '@/components/test-history-graph'
 import { DnsMultiServerGraph } from '@/components/dns-multi-server-graph'
 import { SuccessRateGraph } from '@/components/success-rate-graph'
 import { TestResultsTable } from '@/components/test-results-table'
-import { Plus, Activity, AlertCircle, CheckCircle, Edit, Settings, BarChart3, Cog } from 'lucide-react'
+import { Plus, Activity, AlertCircle, CheckCircle, Edit, Settings, BarChart3, Cog, Filter, Clock } from 'lucide-react'
 
 interface TestConfig {
   id: string
@@ -41,6 +41,8 @@ export default function Dashboard() {
   const [editingConfig, setEditingConfig] = useState<TestConfig | null>(null)
   const [globalInterval, setGlobalInterval] = useState(30)
   const [globalTimeFrame, setGlobalTimeFrame] = useState('60') // Global time frame in minutes
+  const [selectedConfigId, setSelectedConfigId] = useState<string>('all') // Filter by test config
+  const [timeRange, setTimeRange] = useState('1h') // Time range filter
   const [ws, setWs] = useState<WebSocket | null>(null)
 
   useEffect(() => {
@@ -52,6 +54,10 @@ export default function Dashboard() {
       if (ws) ws.close()
     }
   }, [])
+
+  useEffect(() => {
+    fetchResults()
+  }, [selectedConfigId, timeRange])
 
   const fetchConfigs = async () => {
     try {
@@ -65,7 +71,26 @@ export default function Dashboard() {
 
   const fetchResults = async () => {
     try {
-      const response = await fetch('http://localhost:8000/api/results')
+      const params = new URLSearchParams()
+      
+      // Add time range filter
+      const now = new Date()
+      let since = new Date()
+      switch (timeRange) {
+        case '1h': since.setHours(now.getHours() - 1); break
+        case '6h': since.setHours(now.getHours() - 6); break
+        case '24h': since.setHours(now.getHours() - 24); break
+        case '7d': since.setDate(now.getDate() - 7); break
+        case '30d': since.setDate(now.getDate() - 30); break
+      }
+      params.append('since', since.toISOString())
+      
+      // Add config filter
+      if (selectedConfigId !== 'all') {
+        params.append('config_id', selectedConfigId)
+      }
+      
+      const response = await fetch(`http://localhost:8000/api/results?${params}`)
       const data = await response.json()
       setResults(data)
     } catch (error) {
@@ -208,6 +233,51 @@ export default function Dashboard() {
           </TabsList>
 
           <TabsContent value="overview" className="space-y-6">
+            {/* Filter Controls */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2">
+                  <Filter className="w-4 h-4" />
+                  <span>Filters</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="flex flex-wrap gap-4">
+                <div className="flex items-center space-x-2">
+                  <Clock className="w-4 h-4 text-muted-foreground" />
+                  <Label htmlFor="time-range">Time Range:</Label>
+                  <Select value={timeRange} onValueChange={setTimeRange}>
+                    <SelectTrigger className="w-32">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="1h">Last Hour</SelectItem>
+                      <SelectItem value="6h">Last 6 Hours</SelectItem>
+                      <SelectItem value="24h">Last 24 Hours</SelectItem>
+                      <SelectItem value="7d">Last 7 Days</SelectItem>
+                      <SelectItem value="30d">Last 30 Days</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Settings className="w-4 h-4 text-muted-foreground" />
+                  <Label htmlFor="test-filter">Test:</Label>
+                  <Select value={selectedConfigId} onValueChange={setSelectedConfigId}>
+                    <SelectTrigger className="w-48">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Tests</SelectItem>
+                      {configs.map(config => (
+                        <SelectItem key={config.id} value={config.id}>
+                          {config.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </CardContent>
+            </Card>
+
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">

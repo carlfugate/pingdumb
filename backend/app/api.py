@@ -71,8 +71,13 @@ async def delete_config(config_id: str):
     return {"status": "deleted"}
 
 @app.get("/api/results")
-async def get_results(limit: Optional[int] = None, hours: Optional[int] = None):
-    results = await db.get_results_by_timerange(hours, limit)
+async def get_results(
+    limit: Optional[int] = None, 
+    hours: Optional[int] = None,
+    config_id: Optional[str] = None,
+    since: Optional[str] = None
+):
+    results = await db.get_results_by_timerange(hours, limit, config_id, since)
     return [result.dict() for result in results]
 
 @app.websocket("/ws")

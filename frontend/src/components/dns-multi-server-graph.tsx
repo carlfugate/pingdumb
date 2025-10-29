@@ -1,5 +1,6 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -29,6 +30,13 @@ interface DnsMultiServerGraphProps {
 }
 
 export function DnsMultiServerGraph({ config, results, timeFrame, setTimeFrame, globalTimeFrame }: DnsMultiServerGraphProps) {
+  const [renderKey, setRenderKey] = useState(0)
+
+  // Force re-render when time frame changes
+  useEffect(() => {
+    setRenderKey(prev => prev + 1)
+  }, [timeFrame])
+
   const timeFrameOptions = [
     { value: '5', label: '5 min' },
     { value: '15', label: '15 min' },
@@ -150,7 +158,7 @@ export function DnsMultiServerGraph({ config, results, timeFrame, setTimeFrame, 
         </div>
       </CardHeader>
       <CardContent>
-        <ResponsiveContainer width="100%" height={160}>
+        <ResponsiveContainer width="100%" height={160} key={`${config.id}-${timeFrame}-${renderKey}`}>
           <LineChart data={chartData}>
             <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
             <XAxis 

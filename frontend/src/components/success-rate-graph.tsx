@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -20,9 +20,15 @@ interface SuccessRateGraphProps {
 
 export function SuccessRateGraph({ results, globalTimeFrame }: SuccessRateGraphProps) {
   const [localTimeFrame, setLocalTimeFrame] = useState<string | null>(null) // null means use global
+  const [renderKey, setRenderKey] = useState(0)
   
   // Use local time frame if set, otherwise use global
   const effectiveTimeFrame = localTimeFrame || globalTimeFrame || '60'
+
+  // Force re-render when effective time frame changes
+  useEffect(() => {
+    setRenderKey(prev => prev + 1)
+  }, [effectiveTimeFrame])
 
   const timeFrameOptions = [
     { value: '5', label: '5 min' },
@@ -116,7 +122,7 @@ export function SuccessRateGraph({ results, globalTimeFrame }: SuccessRateGraphP
         </div>
       </CardHeader>
       <CardContent>
-        <ResponsiveContainer width="100%" height={120}>
+        <ResponsiveContainer width="100%" height={120} key={`success-rate-${effectiveTimeFrame}-${renderKey}`}>
           <AreaChart data={chartData}>
             <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
             <XAxis 

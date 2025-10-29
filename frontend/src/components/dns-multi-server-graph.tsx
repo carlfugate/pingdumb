@@ -61,7 +61,7 @@ export function DnsMultiServerGraph({ config, results, timeFrame, setTimeFrame, 
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="global" className="text-xs">Global</SelectItem>
+                <SelectItem value="global" className="text-xs">Default</SelectItem>
                 {timeFrameOptions.map(option => (
                   <SelectItem key={option.value} value={option.value} className="text-xs">
                     {option.label}
@@ -139,7 +139,7 @@ export function DnsMultiServerGraph({ config, results, timeFrame, setTimeFrame, 
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="global" className="text-xs">Global</SelectItem>
+              <SelectItem value="global" className="text-xs">Default</SelectItem>
               {timeFrameOptions.map(option => (
                 <SelectItem key={option.value} value={option.value} className="text-xs">
                   {option.label}

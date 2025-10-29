@@ -334,7 +334,7 @@ export default function Dashboard() {
                 <div className="flex items-center justify-between">
                   <CardTitle>Response Time History</CardTitle>
                   <div className="flex items-center space-x-2">
-                    <Label htmlFor="global-timeframe" className="text-sm">Global Time Frame:</Label>
+                    <Label htmlFor="global-timeframe" className="text-sm">Default Time Frame:</Label>
                     <Select value={globalTimeFrame} onValueChange={setGlobalTimeFrame}>
                       <SelectTrigger className="w-28 h-8 text-xs">
                         <SelectValue />

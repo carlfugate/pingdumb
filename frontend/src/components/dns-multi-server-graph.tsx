@@ -2,6 +2,7 @@
 
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 
 interface TestResult {
   id: string
@@ -22,20 +23,51 @@ interface TestConfig {
 interface DnsMultiServerGraphProps {
   config: TestConfig
   results: TestResult[]
+  timeFrame: string
+  setTimeFrame: (value: string) => void
 }
 
-export function DnsMultiServerGraph({ config, results }: DnsMultiServerGraphProps) {
+export function DnsMultiServerGraph({ config, results, timeFrame, setTimeFrame }: DnsMultiServerGraphProps) {
+  const timeFrameOptions = [
+    { value: '5', label: '5 min' },
+    { value: '15', label: '15 min' },
+    { value: '30', label: '30 min' },
+    { value: '60', label: '1 hour' },
+    { value: '240', label: '4 hours' },
+    { value: '720', label: '12 hours' },
+    { value: '1440', label: '24 hours' }
+  ]
+
+  // Filter results by time frame
+  const now = new Date()
+  const timeFrameMs = parseInt(timeFrame) * 60 * 1000 // Convert minutes to milliseconds
+  const cutoffTime = new Date(now.getTime() - timeFrameMs)
+
   // Filter DNS results for this config
   const dnsResults = results
     .filter(r => r.config_id === config.id && r.success && r.data?.results)
-    .slice(0, 10) // Last 10 data points
-    .reverse() // Show chronologically
+    .filter(r => new Date(r.timestamp) >= cutoffTime) // Filter by time frame
+    .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()) // Sort chronologically
 
   if (dnsResults.length === 0) {
     return (
       <Card className="w-full">
         <CardHeader>
-          <CardTitle className="text-sm">{config.name} - DNS Server Response Times</CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-sm">{config.name} - DNS Server Response Times</CardTitle>
+            <Select value={timeFrame} onValueChange={setTimeFrame}>
+              <SelectTrigger className="w-24 h-8 text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {timeFrameOptions.map(option => (
+                  <SelectItem key={option.value} value={option.value} className="text-xs">
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </CardHeader>
         <CardContent>
           <div className="h-40 flex items-center justify-center text-muted-foreground text-sm">
@@ -98,7 +130,21 @@ export function DnsMultiServerGraph({ config, results }: DnsMultiServerGraphProp
   return (
     <Card className="w-full">
       <CardHeader>
-        <CardTitle className="text-sm">{config.name} - DNS Server Response Times</CardTitle>
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-sm">{config.name} - DNS Server Response Times</CardTitle>
+          <Select value={timeFrame} onValueChange={setTimeFrame}>
+            <SelectTrigger className="w-24 h-8 text-xs">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {timeFrameOptions.map(option => (
+                <SelectItem key={option.value} value={option.value} className="text-xs">
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       </CardHeader>
       <CardContent>
         <ResponsiveContainer width="100%" height={160}>

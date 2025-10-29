@@ -1,7 +1,9 @@
 'use client'
 
+import { useState } from 'react'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { DnsMultiServerGraph } from './dns-multi-server-graph'
 
 interface TestResult {
@@ -26,16 +28,33 @@ interface TestHistoryGraphProps {
 }
 
 export function TestHistoryGraph({ config, results }: TestHistoryGraphProps) {
+  const [timeFrame, setTimeFrame] = useState('60') // Default to 60 minutes
+
+  const timeFrameOptions = [
+    { value: '5', label: '5 min' },
+    { value: '15', label: '15 min' },
+    { value: '30', label: '30 min' },
+    { value: '60', label: '1 hour' },
+    { value: '240', label: '4 hours' },
+    { value: '720', label: '12 hours' },
+    { value: '1440', label: '24 hours' }
+  ]
+
   // Use DNS multi-server graph for DNS tests
   if (config.test_type === 'dns') {
-    return <DnsMultiServerGraph config={config} results={results} />
+    return <DnsMultiServerGraph config={config} results={results} timeFrame={timeFrame} setTimeFrame={setTimeFrame} />
   }
+
+  // Filter results by time frame
+  const now = new Date()
+  const timeFrameMs = parseInt(timeFrame) * 60 * 1000 // Convert minutes to milliseconds
+  const cutoffTime = new Date(now.getTime() - timeFrameMs)
 
   // Filter and prepare data for this specific config
   const configResults = results
     .filter(r => r.config_id === config.id && r.success)
-    .slice(0, 20) // Last 20 data points
-    .reverse() // Show chronologically
+    .filter(r => new Date(r.timestamp) >= cutoffTime) // Filter by time frame
+    .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()) // Sort chronologically
     .map(r => {
       let responseTime = 0
       
@@ -86,7 +105,21 @@ export function TestHistoryGraph({ config, results }: TestHistoryGraphProps) {
   return (
     <Card className="w-full">
       <CardHeader>
-        <CardTitle className="text-sm">{config.name} - Response Time</CardTitle>
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-sm">{config.name} - Response Time</CardTitle>
+          <Select value={timeFrame} onValueChange={setTimeFrame}>
+            <SelectTrigger className="w-24 h-8 text-xs">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {timeFrameOptions.map(option => (
+                <SelectItem key={option.value} value={option.value} className="text-xs">
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       </CardHeader>
       <CardContent>
         <ResponsiveContainer width="100%" height={120}>

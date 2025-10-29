@@ -1,7 +1,9 @@
 'use client'
 
+import { useState } from 'react'
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 
 interface TestResult {
   id: string
@@ -16,10 +18,29 @@ interface SuccessRateGraphProps {
 }
 
 export function SuccessRateGraph({ results }: SuccessRateGraphProps) {
+  const [timeFrame, setTimeFrame] = useState('60') // Default to 60 minutes
+
+  const timeFrameOptions = [
+    { value: '5', label: '5 min' },
+    { value: '15', label: '15 min' },
+    { value: '30', label: '30 min' },
+    { value: '60', label: '1 hour' },
+    { value: '240', label: '4 hours' },
+    { value: '720', label: '12 hours' },
+    { value: '1440', label: '24 hours' }
+  ]
+
+  // Filter results by time frame
+  const now = new Date()
+  const timeFrameMs = parseInt(timeFrame) * 60 * 1000 // Convert minutes to milliseconds
+  const cutoffTime = new Date(now.getTime() - timeFrameMs)
+
+  const filteredResults = results.filter(r => new Date(r.timestamp) >= cutoffTime)
+
   // Group results by time intervals (every 5 minutes)
   const timeGroups = new Map<string, { total: number; successful: number }>()
   
-  results.slice(0, 100).forEach(result => {
+  filteredResults.forEach(result => {
     const time = new Date(result.timestamp)
     const timeKey = `${time.getHours()}:${Math.floor(time.getMinutes() / 5) * 5}`
     
@@ -39,13 +60,26 @@ export function SuccessRateGraph({ results }: SuccessRateGraphProps) {
       total: data.total
     }))
     .sort((a, b) => a.time.localeCompare(b.time))
-    .slice(-12) // Last 12 time periods
 
   if (chartData.length === 0) {
     return (
       <Card>
         <CardHeader>
-          <CardTitle className="text-sm">Success Rate Over Time</CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-sm">Success Rate Over Time</CardTitle>
+            <Select value={timeFrame} onValueChange={setTimeFrame}>
+              <SelectTrigger className="w-24 h-8 text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {timeFrameOptions.map(option => (
+                  <SelectItem key={option.value} value={option.value} className="text-xs">
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </CardHeader>
         <CardContent>
           <div className="h-32 flex items-center justify-center text-muted-foreground text-sm">
@@ -59,7 +93,21 @@ export function SuccessRateGraph({ results }: SuccessRateGraphProps) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-sm">Success Rate Over Time</CardTitle>
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-sm">Success Rate Over Time</CardTitle>
+          <Select value={timeFrame} onValueChange={setTimeFrame}>
+            <SelectTrigger className="w-24 h-8 text-xs">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {timeFrameOptions.map(option => (
+                <SelectItem key={option.value} value={option.value} className="text-xs">
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       </CardHeader>
       <CardContent>
         <ResponsiveContainer width="100%" height={120}>

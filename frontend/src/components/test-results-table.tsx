@@ -4,8 +4,10 @@ import { useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { Label } from '@/components/ui/label'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { CheckCircle, XCircle, Clock, Globe, Server, Activity, ChevronDown, ChevronUp } from 'lucide-react'
+import { CheckCircle, XCircle, Clock, Globe, Server, Activity, ChevronDown, ChevronUp, Filter, Settings } from 'lucide-react'
 
 interface TestResult {
   id: string
@@ -27,9 +29,20 @@ interface TestConfig {
 interface TestResultsTableProps {
   results: TestResult[]
   configs: TestConfig[]
+  timeRange: string
+  setTimeRange: (value: string) => void
+  selectedConfigId: string
+  setSelectedConfigId: (value: string) => void
 }
 
-export function TestResultsTable({ results, configs }: TestResultsTableProps) {
+export function TestResultsTable({ 
+  results, 
+  configs, 
+  timeRange, 
+  setTimeRange, 
+  selectedConfigId, 
+  setSelectedConfigId 
+}: TestResultsTableProps) {
   const [expandedResults, setExpandedResults] = useState<Set<string>>(new Set())
 
   const toggleExpanded = (resultId: string) => {
@@ -202,7 +215,44 @@ export function TestResultsTable({ results, configs }: TestResultsTableProps) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Recent Test Results</CardTitle>
+        <div className="flex items-center justify-between">
+          <CardTitle>Recent Test Results</CardTitle>
+          <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-2">
+              <Clock className="w-4 h-4 text-muted-foreground" />
+              <Label htmlFor="time-range">Time Range:</Label>
+              <Select value={timeRange} onValueChange={setTimeRange}>
+                <SelectTrigger className="w-32">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="1h">Last Hour</SelectItem>
+                  <SelectItem value="6h">Last 6 Hours</SelectItem>
+                  <SelectItem value="24h">Last 24 Hours</SelectItem>
+                  <SelectItem value="7d">Last 7 Days</SelectItem>
+                  <SelectItem value="30d">Last 30 Days</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex items-center space-x-2">
+              <Settings className="w-4 h-4 text-muted-foreground" />
+              <Label htmlFor="test-filter">Test:</Label>
+              <Select value={selectedConfigId} onValueChange={setSelectedConfigId}>
+                <SelectTrigger className="w-48">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Tests</SelectItem>
+                  {configs.map(config => (
+                    <SelectItem key={config.id} value={config.id}>
+                      {config.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </div>
       </CardHeader>
       <CardContent>
         <Table>

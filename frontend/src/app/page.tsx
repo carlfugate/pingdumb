@@ -233,51 +233,6 @@ export default function Dashboard() {
           </TabsList>
 
           <TabsContent value="overview" className="space-y-6">
-            {/* Filter Controls */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center space-x-2">
-                  <Filter className="w-4 h-4" />
-                  <span>Filters</span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="flex flex-wrap gap-4">
-                <div className="flex items-center space-x-2">
-                  <Clock className="w-4 h-4 text-muted-foreground" />
-                  <Label htmlFor="time-range">Time Range:</Label>
-                  <Select value={timeRange} onValueChange={setTimeRange}>
-                    <SelectTrigger className="w-32">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="1h">Last Hour</SelectItem>
-                      <SelectItem value="6h">Last 6 Hours</SelectItem>
-                      <SelectItem value="24h">Last 24 Hours</SelectItem>
-                      <SelectItem value="7d">Last 7 Days</SelectItem>
-                      <SelectItem value="30d">Last 30 Days</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <Settings className="w-4 h-4 text-muted-foreground" />
-                  <Label htmlFor="test-filter">Test:</Label>
-                  <Select value={selectedConfigId} onValueChange={setSelectedConfigId}>
-                    <SelectTrigger className="w-48">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Tests</SelectItem>
-                      {configs.map(config => (
-                        <SelectItem key={config.id} value={config.id}>
-                          {config.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </CardContent>
-            </Card>
-
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -395,7 +350,14 @@ export default function Dashboard() {
               </Card>
             </div>
 
-            <TestResultsTable results={results} configs={configs} />
+            <TestResultsTable 
+              results={results} 
+              configs={configs}
+              timeRange={timeRange}
+              setTimeRange={setTimeRange}
+              selectedConfigId={selectedConfigId}
+              setSelectedConfigId={setSelectedConfigId}
+            />
           </TabsContent>
 
           <TabsContent value="history" className="space-y-6">

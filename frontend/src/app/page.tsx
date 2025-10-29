@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { TestConfigDialog } from '@/components/test-config-dialog'
 import { TestHistoryGraph } from '@/components/test-history-graph'
@@ -39,6 +40,7 @@ export default function Dashboard() {
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [editingConfig, setEditingConfig] = useState<TestConfig | null>(null)
   const [globalInterval, setGlobalInterval] = useState(30)
+  const [globalTimeFrame, setGlobalTimeFrame] = useState('60') // Global time frame in minutes
   const [ws, setWs] = useState<WebSocket | null>(null)
 
   useEffect(() => {
@@ -317,7 +319,7 @@ export default function Dashboard() {
                     <span className="font-medium">{results.length}</span>
                   </div>
                   <div className="pt-2">
-                    <SuccessRateGraph results={results} />
+                    <SuccessRateGraph results={results} globalTimeFrame={globalTimeFrame} />
                   </div>
                 </CardContent>
               </Card>
@@ -329,7 +331,26 @@ export default function Dashboard() {
           <TabsContent value="history" className="space-y-6">
             <Card>
               <CardHeader>
-                <CardTitle>Response Time History</CardTitle>
+                <div className="flex items-center justify-between">
+                  <CardTitle>Response Time History</CardTitle>
+                  <div className="flex items-center space-x-2">
+                    <Label htmlFor="global-timeframe" className="text-sm">Global Time Frame:</Label>
+                    <Select value={globalTimeFrame} onValueChange={setGlobalTimeFrame}>
+                      <SelectTrigger className="w-28 h-8 text-xs">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="5" className="text-xs">5 min</SelectItem>
+                        <SelectItem value="15" className="text-xs">15 min</SelectItem>
+                        <SelectItem value="30" className="text-xs">30 min</SelectItem>
+                        <SelectItem value="60" className="text-xs">1 hour</SelectItem>
+                        <SelectItem value="240" className="text-xs">4 hours</SelectItem>
+                        <SelectItem value="720" className="text-xs">12 hours</SelectItem>
+                        <SelectItem value="1440" className="text-xs">24 hours</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -337,7 +358,8 @@ export default function Dashboard() {
                     <TestHistoryGraph 
                       key={config.id} 
                       config={config} 
-                      results={results} 
+                      results={results}
+                      globalTimeFrame={globalTimeFrame}
                     />
                   ))}
                 </div>

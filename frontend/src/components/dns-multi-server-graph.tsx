@@ -24,10 +24,11 @@ interface DnsMultiServerGraphProps {
   config: TestConfig
   results: TestResult[]
   timeFrame: string
-  setTimeFrame: (value: string) => void
+  setTimeFrame: (value: string | null) => void
+  globalTimeFrame?: string
 }
 
-export function DnsMultiServerGraph({ config, results, timeFrame, setTimeFrame }: DnsMultiServerGraphProps) {
+export function DnsMultiServerGraph({ config, results, timeFrame, setTimeFrame, globalTimeFrame }: DnsMultiServerGraphProps) {
   const timeFrameOptions = [
     { value: '5', label: '5 min' },
     { value: '15', label: '15 min' },
@@ -55,11 +56,12 @@ export function DnsMultiServerGraph({ config, results, timeFrame, setTimeFrame }
         <CardHeader>
           <div className="flex items-center justify-between">
             <CardTitle className="text-sm">{config.name} - DNS Server Response Times</CardTitle>
-            <Select value={timeFrame} onValueChange={setTimeFrame}>
-              <SelectTrigger className="w-24 h-8 text-xs">
+            <Select value={timeFrame === globalTimeFrame ? 'global' : timeFrame} onValueChange={(value) => setTimeFrame(value === 'global' ? null : value)}>
+              <SelectTrigger className="w-28 h-8 text-xs">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
+                <SelectItem value="global" className="text-xs">Global</SelectItem>
                 {timeFrameOptions.map(option => (
                   <SelectItem key={option.value} value={option.value} className="text-xs">
                     {option.label}
@@ -132,11 +134,12 @@ export function DnsMultiServerGraph({ config, results, timeFrame, setTimeFrame }
       <CardHeader>
         <div className="flex items-center justify-between">
           <CardTitle className="text-sm">{config.name} - DNS Server Response Times</CardTitle>
-          <Select value={timeFrame} onValueChange={setTimeFrame}>
-            <SelectTrigger className="w-24 h-8 text-xs">
+          <Select value={timeFrame === globalTimeFrame ? 'global' : timeFrame} onValueChange={(value) => setTimeFrame(value === 'global' ? null : value)}>
+            <SelectTrigger className="w-28 h-8 text-xs">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
+              <SelectItem value="global" className="text-xs">Global</SelectItem>
               {timeFrameOptions.map(option => (
                 <SelectItem key={option.value} value={option.value} className="text-xs">
                   {option.label}

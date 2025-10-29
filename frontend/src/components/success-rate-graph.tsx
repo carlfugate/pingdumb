@@ -15,10 +15,14 @@ interface TestResult {
 
 interface SuccessRateGraphProps {
   results: TestResult[]
+  globalTimeFrame?: string
 }
 
-export function SuccessRateGraph({ results }: SuccessRateGraphProps) {
-  const [timeFrame, setTimeFrame] = useState('60') // Default to 60 minutes
+export function SuccessRateGraph({ results, globalTimeFrame }: SuccessRateGraphProps) {
+  const [localTimeFrame, setLocalTimeFrame] = useState<string | null>(null) // null means use global
+  
+  // Use local time frame if set, otherwise use global
+  const effectiveTimeFrame = localTimeFrame || globalTimeFrame || '60'
 
   const timeFrameOptions = [
     { value: '5', label: '5 min' },
@@ -32,7 +36,7 @@ export function SuccessRateGraph({ results }: SuccessRateGraphProps) {
 
   // Filter results by time frame
   const now = new Date()
-  const timeFrameMs = parseInt(timeFrame) * 60 * 1000 // Convert minutes to milliseconds
+  const timeFrameMs = parseInt(effectiveTimeFrame) * 60 * 1000 // Convert minutes to milliseconds
   const cutoffTime = new Date(now.getTime() - timeFrameMs)
 
   const filteredResults = results.filter(r => new Date(r.timestamp) >= cutoffTime)
@@ -67,11 +71,12 @@ export function SuccessRateGraph({ results }: SuccessRateGraphProps) {
         <CardHeader>
           <div className="flex items-center justify-between">
             <CardTitle className="text-sm">Success Rate Over Time</CardTitle>
-            <Select value={timeFrame} onValueChange={setTimeFrame}>
-              <SelectTrigger className="w-24 h-8 text-xs">
+            <Select value={localTimeFrame || 'global'} onValueChange={(value) => setLocalTimeFrame(value === 'global' ? null : value)}>
+              <SelectTrigger className="w-28 h-8 text-xs">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
+                <SelectItem value="global" className="text-xs">Global</SelectItem>
                 {timeFrameOptions.map(option => (
                   <SelectItem key={option.value} value={option.value} className="text-xs">
                     {option.label}
@@ -95,11 +100,12 @@ export function SuccessRateGraph({ results }: SuccessRateGraphProps) {
       <CardHeader>
         <div className="flex items-center justify-between">
           <CardTitle className="text-sm">Success Rate Over Time</CardTitle>
-          <Select value={timeFrame} onValueChange={setTimeFrame}>
-            <SelectTrigger className="w-24 h-8 text-xs">
+          <Select value={localTimeFrame || 'global'} onValueChange={(value) => setLocalTimeFrame(value === 'global' ? null : value)}>
+            <SelectTrigger className="w-28 h-8 text-xs">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
+              <SelectItem value="global" className="text-xs">Global</SelectItem>
               {timeFrameOptions.map(option => (
                 <SelectItem key={option.value} value={option.value} className="text-xs">
                   {option.label}

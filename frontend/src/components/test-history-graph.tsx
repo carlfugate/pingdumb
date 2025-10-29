@@ -25,10 +25,14 @@ interface TestConfig {
 interface TestHistoryGraphProps {
   config: TestConfig
   results: TestResult[]
+  globalTimeFrame?: string
 }
 
-export function TestHistoryGraph({ config, results }: TestHistoryGraphProps) {
-  const [timeFrame, setTimeFrame] = useState('60') // Default to 60 minutes
+export function TestHistoryGraph({ config, results, globalTimeFrame }: TestHistoryGraphProps) {
+  const [localTimeFrame, setLocalTimeFrame] = useState<string | null>(null) // null means use global
+  
+  // Use local time frame if set, otherwise use global
+  const effectiveTimeFrame = localTimeFrame || globalTimeFrame || '60'
 
   const timeFrameOptions = [
     { value: '5', label: '5 min' },
@@ -42,12 +46,18 @@ export function TestHistoryGraph({ config, results }: TestHistoryGraphProps) {
 
   // Use DNS multi-server graph for DNS tests
   if (config.test_type === 'dns') {
-    return <DnsMultiServerGraph config={config} results={results} timeFrame={timeFrame} setTimeFrame={setTimeFrame} />
+    return <DnsMultiServerGraph 
+      config={config} 
+      results={results} 
+      timeFrame={effectiveTimeFrame} 
+      setTimeFrame={setLocalTimeFrame}
+      globalTimeFrame={globalTimeFrame}
+    />
   }
 
   // Filter results by time frame
   const now = new Date()
-  const timeFrameMs = parseInt(timeFrame) * 60 * 1000 // Convert minutes to milliseconds
+  const timeFrameMs = parseInt(effectiveTimeFrame) * 60 * 1000 // Convert minutes to milliseconds
   const cutoffTime = new Date(now.getTime() - timeFrameMs)
 
   // Filter and prepare data for this specific config
@@ -107,11 +117,12 @@ export function TestHistoryGraph({ config, results }: TestHistoryGraphProps) {
       <CardHeader>
         <div className="flex items-center justify-between">
           <CardTitle className="text-sm">{config.name} - Response Time</CardTitle>
-          <Select value={timeFrame} onValueChange={setTimeFrame}>
-            <SelectTrigger className="w-24 h-8 text-xs">
+          <Select value={localTimeFrame || 'global'} onValueChange={(value) => setLocalTimeFrame(value === 'global' ? null : value)}>
+            <SelectTrigger className="w-28 h-8 text-xs">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
+              <SelectItem value="global" className="text-xs">Global</SelectItem>
               {timeFrameOptions.map(option => (
                 <SelectItem key={option.value} value={option.value} className="text-xs">
                   {option.label}

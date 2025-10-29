@@ -44,6 +44,7 @@ export default function Dashboard() {
   const [selectedConfigId, setSelectedConfigId] = useState<string>('all') // Filter by test config
   const [timeRange, setTimeRange] = useState('1h') // Time range filter
   const [timezone, setTimezone] = useState('America/Chicago') // Default to Central US time
+  const [renderKey, setRenderKey] = useState(0) // Force re-render counter
 
   // Load timezone from localStorage on mount
   useEffect(() => {
@@ -57,6 +58,7 @@ export default function Dashboard() {
   const handleTimezoneChange = (newTimezone: string) => {
     setTimezone(newTimezone)
     localStorage.setItem('pingdumb-timezone', newTimezone)
+    setRenderKey(prev => prev + 1) // Force re-render
   }
   const [ws, setWs] = useState<WebSocket | null>(null)
 
@@ -384,7 +386,7 @@ export default function Dashboard() {
             </div>
 
             <TestResultsTable 
-              key={timezone}
+              key={renderKey}
               results={results} 
               configs={configs}
               timeRange={timeRange}

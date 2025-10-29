@@ -234,36 +234,36 @@ class NetworkTester:
         try:
             import time
             
-            # Get Fast.com token and URLs
             session = await self.get_session()
             
-            # Step 1: Get the token from Fast.com
+            # Step 1: Get the Fast.com homepage to find JS files
             async with session.get('https://fast.com/') as response:
                 html = await response.text()
                 
-            # Extract token from the HTML (try multiple patterns)
+            # Step 2: Extract JS file URLs
             import re
-            token = None
+            js_files = re.findall(r'src="([^"]*\.js[^"]*)"', html)
+            if not js_files:
+                raise Exception("No JavaScript files found on Fast.com")
             
-            # Try different token patterns
-            patterns = [
-                r'token:"([^"]+)"',
-                r'token\s*:\s*"([^"]+)"',
-                r'"token"\s*:\s*"([^"]+)"',
-                r'token=([a-zA-Z0-9]+)',
-                r'speedtest.*?token.*?"([^"]+)"'
-            ]
+            # Step 3: Get token from the main JS file
+            main_js = js_files[0]
+            if not main_js.startswith('http'):
+                main_js = 'https://fast.com' + main_js
+                
+            async with session.get(main_js) as js_response:
+                if js_response.status != 200:
+                    raise Exception(f"Failed to fetch JS file: {js_response.status}")
+                js_content = await js_response.text()
             
-            for pattern in patterns:
-                token_match = re.search(pattern, html, re.IGNORECASE)
-                if token_match:
-                    token = token_match.group(1)
-                    break
+            # Step 4: Extract token from JS (look for base64-like strings)
+            token_match = re.search(r'"([A-Za-z0-9+/]{20,}={0,2})"', js_content)
+            if not token_match:
+                raise Exception("Could not extract token from JavaScript")
             
-            if not token:
-                raise Exception("Could not extract Fast.com token from HTML")
+            token = token_match.group(1)
             
-            # Step 2: Get download URLs
+            # Step 5: Get download URLs from API
             api_url = f'https://api.fast.com/netflix/speedtest/v2?https=true&token={token}&urlCount=3'
             async with session.get(api_url) as response:
                 if response.status != 200:
@@ -273,7 +273,7 @@ class NetworkTester:
             if not data or len(data) == 0:
                 raise Exception("No download URLs received from API")
             
-            # Step 3: Download test files and measure speed
+            # Step 6: Download test files and measure speed
             download_speeds = []
             test_duration = 10  # seconds
             

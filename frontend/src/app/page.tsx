@@ -121,6 +121,7 @@ export default function Dashboard() {
     websocket.onmessage = (event) => {
       const result = JSON.parse(event.data)
       setResults(prev => [result, ...prev.slice(0, 99)])
+      setRenderKey(prev => prev + 1) // Force re-render with current timezone
     }
 
     websocket.onopen = () => {

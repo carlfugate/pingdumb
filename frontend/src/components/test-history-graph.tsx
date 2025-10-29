@@ -72,24 +72,51 @@ export function TestHistoryGraph({ config, results, globalTimeFrame }: TestHisto
     .filter(r => new Date(r.timestamp) >= cutoffTime) // Filter by time frame
     .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()) // Sort chronologically
     .map(r => {
-      let responseTime = 0
+      const time = new Date(r.timestamp).toLocaleTimeString()
       
-      // Handle different test types
-      if (config.test_type === 'dns' && r.data?.avg_response_time) {
-        responseTime = r.data.avg_response_time // Already in ms for DNS
-      } else if (r.response_time) {
-        responseTime = r.response_time * 1000 // Convert to ms for other types
-      }
-      
-      return {
-        time: new Date(r.timestamp).toLocaleTimeString(),
-        responseTime: responseTime,
-        success: r.success,
-        // Add DNS-specific data for tooltip
-        ...(config.test_type === 'dns' && r.data ? {
-          successRate: r.data.success_rate,
-          serversCount: r.data.servers_tested
-        } : {})
+      // Handle speedtest types differently
+      if (config.test_type === 'speedtest_ookla') {
+        return {
+          time,
+          download: r.data?.download_mbps || 0,
+          upload: r.data?.upload_mbps || 0,
+          ping: r.data?.ping_ms || 0,
+          success: r.success
+        }
+      } else if (config.test_type === 'speedtest_fast') {
+        return {
+          time,
+          download: r.data?.download_mbps || 0,
+          success: r.success
+        }
+      } else if (config.test_type === 'iperf3') {
+        return {
+          time,
+          bandwidth: r.data?.bandwidth_mbps || 0,
+          direction: r.data?.direction || 'unknown',
+          retransmits: r.data?.retransmits || 0,
+          success: r.success
+        }
+      } else {
+        // Regular tests - use response time
+        let responseTime = 0
+        
+        if (config.test_type === 'dns' && r.data?.avg_response_time) {
+          responseTime = r.data.avg_response_time // Already in ms for DNS
+        } else if (r.response_time) {
+          responseTime = r.response_time * 1000 // Convert to ms for other types
+        }
+        
+        return {
+          time,
+          responseTime: responseTime,
+          success: r.success,
+          // Add DNS-specific data for tooltip
+          ...(config.test_type === 'dns' && r.data ? {
+            successRate: r.data.success_rate,
+            serversCount: r.data.servers_tested
+          } : {})
+        }
       }
     })
 
@@ -118,11 +145,29 @@ export function TestHistoryGraph({ config, results, globalTimeFrame }: TestHisto
     }
   }
 
+  const getGraphTitle = () => {
+    switch (config.test_type) {
+      case 'speedtest_ookla': return `${config.name} - Download/Upload Speed`
+      case 'speedtest_fast': return `${config.name} - Download Speed`
+      case 'iperf3': return `${config.name} - Bandwidth`
+      default: return `${config.name} - Response Time`
+    }
+  }
+
+  const getYAxisLabel = () => {
+    switch (config.test_type) {
+      case 'speedtest_ookla':
+      case 'speedtest_fast':
+      case 'iperf3': return 'Mbps'
+      default: return 'ms'
+    }
+  }
+
   return (
     <Card className="w-full">
       <CardHeader>
         <div className="flex items-center justify-between">
-          <CardTitle className="text-sm">{config.name} - Response Time</CardTitle>
+          <CardTitle className="text-sm">{getGraphTitle()}</CardTitle>
           <Select value={localTimeFrame || 'global'} onValueChange={(value) => setLocalTimeFrame(value === 'global' ? null : value)}>
             <SelectTrigger className="w-28 h-8 text-xs">
               <SelectValue />
@@ -149,32 +194,83 @@ export function TestHistoryGraph({ config, results, globalTimeFrame }: TestHisto
             />
             <YAxis 
               tick={{ fontSize: 10 }}
-              label={{ value: 'ms', angle: -90, position: 'insideLeft' }}
+              label={{ value: getYAxisLabel(), angle: -90, position: 'insideLeft' }}
             />
             <Tooltip 
               formatter={(value: number, name: string, props: any) => {
-                const result = [`${value.toFixed(2)}ms`, 'Avg Response Time']
-                if (config.test_type === 'dns' && props.payload) {
-                  if (props.payload.successRate !== undefined) {
-                    result.push(`${props.payload.successRate.toFixed(1)}% success rate`)
+                if (config.test_type === 'speedtest_ookla') {
+                  if (name === 'download') return [`${value.toFixed(1)} Mbps`, 'Download']
+                  if (name === 'upload') return [`${value.toFixed(1)} Mbps`, 'Upload']
+                  if (name === 'ping') return [`${value.toFixed(0)} ms`, 'Ping']
+                } else if (config.test_type === 'speedtest_fast') {
+                  return [`${value.toFixed(1)} Mbps`, 'Download']
+                } else if (config.test_type === 'iperf3') {
+                  return [`${value.toFixed(1)} Mbps`, 'Bandwidth']
+                } else {
+                  const result = [`${value.toFixed(2)}ms`, 'Avg Response Time']
+                  if (config.test_type === 'dns' && props.payload) {
+                    if (props.payload.successRate !== undefined) {
+                      result.push(`${props.payload.successRate.toFixed(1)}% success rate`)
+                    }
+                    if (props.payload.serversCount) {
+                      result.push(`${props.payload.serversCount} servers tested`)
+                    }
                   }
-                  if (props.payload.serversCount) {
-                    result.push(`${props.payload.serversCount} servers tested`)
-                  }
+                  return result
                 }
-                return result
               }}
               labelStyle={{ fontSize: '12px' }}
               contentStyle={{ fontSize: '12px' }}
             />
-            <Line 
-              type="monotone" 
-              dataKey="responseTime" 
-              stroke={getLineColor()}
-              strokeWidth={2}
-              dot={{ r: 2 }}
-              activeDot={{ r: 4 }}
-            />
+            
+            {/* Render different lines based on test type */}
+            {config.test_type === 'speedtest_ookla' ? (
+              <>
+                <Line 
+                  type="monotone" 
+                  dataKey="download" 
+                  stroke="#10b981"
+                  strokeWidth={2}
+                  dot={{ r: 2 }}
+                  activeDot={{ r: 4 }}
+                />
+                <Line 
+                  type="monotone" 
+                  dataKey="upload" 
+                  stroke="#3b82f6"
+                  strokeWidth={2}
+                  dot={{ r: 2 }}
+                  activeDot={{ r: 4 }}
+                />
+              </>
+            ) : config.test_type === 'speedtest_fast' ? (
+              <Line 
+                type="monotone" 
+                dataKey="download" 
+                stroke="#ef4444"
+                strokeWidth={2}
+                dot={{ r: 2 }}
+                activeDot={{ r: 4 }}
+              />
+            ) : config.test_type === 'iperf3' ? (
+              <Line 
+                type="monotone" 
+                dataKey="bandwidth" 
+                stroke="#8b5cf6"
+                strokeWidth={2}
+                dot={{ r: 2 }}
+                activeDot={{ r: 4 }}
+              />
+            ) : (
+              <Line 
+                type="monotone" 
+                dataKey="responseTime" 
+                stroke={getLineColor()}
+                strokeWidth={2}
+                dot={{ r: 2 }}
+                activeDot={{ r: 4 }}
+              />
+            )}
           </LineChart>
         </ResponsiveContainer>
       </CardContent>

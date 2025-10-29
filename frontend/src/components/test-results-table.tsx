@@ -45,6 +45,15 @@ export function TestResultsTable({
   setSelectedConfigId,
   timezone
 }: TestResultsTableProps) {
+  console.time('TestResultsTable render')
+  console.log('TestResultsTable rendering with:', {
+    resultsCount: results.length,
+    configsCount: configs.length,
+    timezone,
+    timeRange,
+    selectedConfigId
+  })
+  
   const [expandedResults, setExpandedResults] = useState<Set<string>>(new Set())
 
   const toggleExpanded = (resultId: string) => {
@@ -231,6 +240,8 @@ export function TestResultsTable({
     }
   }
 
+  console.timeEnd('TestResultsTable render')
+
   return (
     <Card>
       <CardHeader>
@@ -245,6 +256,7 @@ export function TestResultsTable({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="15m">Last 15 Minutes</SelectItem>
                   <SelectItem value="1h">Last Hour</SelectItem>
                   <SelectItem value="6h">Last 6 Hours</SelectItem>
                   <SelectItem value="24h">Last 24 Hours</SelectItem>

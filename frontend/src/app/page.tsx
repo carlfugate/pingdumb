@@ -63,8 +63,6 @@ export default function Dashboard() {
   const [ws, setWs] = useState<WebSocket | null>(null)
 
   useEffect(() => {
-    console.time('Initial page load')
-    console.log('Starting initial page load...')
     fetchConfigs()
     fetchResults(true) // Use limit for initial load
     connectWebSocket()
@@ -75,11 +73,6 @@ export default function Dashboard() {
   }, [])
 
   useEffect(() => {
-    console.log('Timezone loaded from localStorage:', timezone)
-    console.timeEnd('Initial page load')
-  }, [timezone])
-
-  useEffect(() => {
     // Only fetch when filters change, not on initial load
     if (configs.length > 0) {
       fetchResults() // Use time range filters
@@ -87,21 +80,16 @@ export default function Dashboard() {
   }, [selectedConfigId, timeRange])
 
   const fetchConfigs = async () => {
-    console.time('fetchConfigs')
     try {
       const response = await fetch('http://localhost:8000/api/configs')
       const data = await response.json()
-      console.log('Configs fetched:', data.length, 'items')
       setConfigs(data)
     } catch (error) {
       console.error('Failed to fetch configs:', error)
     }
-    console.timeEnd('fetchConfigs')
   }
 
   const fetchResults = async (useLimit = false) => {
-    console.time('fetchResults')
-    console.log('Fetching results with filters:', { selectedConfigId, timeRange, useLimit })
     try {
       const params = new URLSearchParams()
       
@@ -129,16 +117,13 @@ export default function Dashboard() {
       }
       
       const url = `http://localhost:8000/api/results?${params}`
-      console.log('Fetching from URL:', url)
       
       const response = await fetch(url)
       const data = await response.json()
-      console.log('Results fetched:', data.length, 'items')
       setResults(data)
     } catch (error) {
       console.error('Failed to fetch results:', error)
     }
-    console.timeEnd('fetchResults')
   }
 
   const connectWebSocket = () => {

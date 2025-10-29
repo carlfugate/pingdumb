@@ -45,15 +45,6 @@ export function TestResultsTable({
   setSelectedConfigId,
   timezone
 }: TestResultsTableProps) {
-  console.time('TestResultsTable render')
-  console.log('TestResultsTable rendering with:', {
-    resultsCount: results.length,
-    configsCount: configs.length,
-    timezone,
-    timeRange,
-    selectedConfigId
-  })
-  
   const [expandedResults, setExpandedResults] = useState<Set<string>>(new Set())
 
   const toggleExpanded = (resultId: string) => {
@@ -285,8 +276,6 @@ export function TestResultsTable({
       default: return <Clock className="w-4 h-4" />
     }
   }
-
-  console.timeEnd('TestResultsTable render')
 
   return (
     <Card>

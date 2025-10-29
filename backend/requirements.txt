@@ -1,0 +1,7 @@
+fastapi
+uvicorn
+websockets
+aiofiles
+ping3
+dnspython
+aiohttp

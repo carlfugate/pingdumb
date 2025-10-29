@@ -166,16 +166,26 @@ class Database:
         
         return results
     
-    async def get_results_by_timerange(self, hours: int = 24, limit: int = 1000) -> List[TestResult]:
+    async def get_results_by_timerange(self, hours: Optional[int] = None, limit: Optional[int] = None) -> List[TestResult]:
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
         
-        cursor.execute('''
-            SELECT * FROM test_results 
-            WHERE timestamp >= datetime('now', '-{} hours')
-            ORDER BY timestamp DESC 
-            LIMIT ?
-        '''.format(hours), (limit,))
+        if hours:
+            query = '''
+                SELECT * FROM test_results 
+                WHERE timestamp >= datetime('now', '-{} hours')
+                ORDER BY timestamp DESC
+            '''.format(hours)
+        else:
+            query = '''
+                SELECT * FROM test_results 
+                ORDER BY timestamp DESC
+            '''
+        
+        if limit:
+            query += f' LIMIT {limit}'
+            
+        cursor.execute(query)
         
         rows = cursor.fetchall()
         conn.close()

@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 import asyncio
 import json
-from typing import List
+from typing import List, Optional
 from .models import TestConfig, TestResult, TestType
 from .network_tests import NetworkTester
 from .database import Database
@@ -71,7 +71,7 @@ async def delete_config(config_id: str):
     return {"status": "deleted"}
 
 @app.get("/api/results")
-async def get_results(limit: int = 1000, hours: int = 24):
+async def get_results(limit: Optional[int] = None, hours: Optional[int] = None):
     results = await db.get_results_by_timerange(hours, limit)
     return [result.dict() for result in results]
 

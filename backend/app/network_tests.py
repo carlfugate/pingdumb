@@ -311,7 +311,7 @@ class NetworkTester:
                 'upload_mbps': 0,  # Fast.com primarily tests download
                 'test_duration': test_duration,
                 'urls_tested': len(download_speeds),
-                'token_used': token[:8] + "..." if len(token) > 8 else token
+                'token_used': str(token)[:8] + "..." if len(str(token)) > 8 else str(token)
             }
             
         except Exception as e:

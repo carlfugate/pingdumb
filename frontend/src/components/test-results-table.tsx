@@ -67,7 +67,31 @@ export function TestResultsTable({
   }
 
   const formatTimestamp = (timestamp: string) => {
-    const date = new Date(timestamp)
+    let date: Date
+    
+    // Handle old timestamps without timezone info (treat as UTC)
+    if (!timestamp.includes('+') && !timestamp.endsWith('Z')) {
+      date = new Date(timestamp + 'Z') // Add Z to treat as UTC
+    } else {
+      date = new Date(timestamp) // Already has timezone info
+    }
+    
+    console.log('formatTimestamp called:', {
+      originalTimestamp: timestamp,
+      parsedDate: date.toISOString(),
+      selectedTimezone: timezone,
+      formattedResult: date.toLocaleString('en-US', {
+        timeZone: timezone,
+        hour12: true,
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit'
+      })
+    })
+    
     return date.toLocaleString('en-US', {
       timeZone: timezone,
       hour12: true,

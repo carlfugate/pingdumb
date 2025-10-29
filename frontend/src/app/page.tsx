@@ -56,9 +56,11 @@ export default function Dashboard() {
 
   // Save timezone to localStorage when changed
   const handleTimezoneChange = (newTimezone: string) => {
+    console.log('Timezone changing:', { from: timezone, to: newTimezone })
     setTimezone(newTimezone)
     localStorage.setItem('pingdumb-timezone', newTimezone)
     setRenderKey(prev => prev + 1) // Force re-render
+    console.log('Timezone changed, renderKey incremented')
   }
   const [ws, setWs] = useState<WebSocket | null>(null)
 
@@ -120,6 +122,11 @@ export default function Dashboard() {
     
     websocket.onmessage = (event) => {
       const result = JSON.parse(event.data)
+      console.log('WebSocket message received:', {
+        result,
+        currentTimezone: timezone,
+        currentRenderKey: renderKey
+      })
       setResults(prev => [result, ...prev.slice(0, 99)])
       setRenderKey(prev => prev + 1) // Force re-render with current timezone
     }

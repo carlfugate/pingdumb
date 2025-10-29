@@ -384,6 +384,7 @@ export default function Dashboard() {
             </div>
 
             <TestResultsTable 
+              key={timezone}
               results={results} 
               configs={configs}
               timeRange={timeRange}

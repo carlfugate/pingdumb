@@ -2,6 +2,8 @@ import asyncio
 import time
 import socket
 import subprocess
+import json
+import re
 from datetime import datetime
 from typing import Dict, Any, Optional
 import aiohttp
@@ -32,6 +34,19 @@ class NetworkTester:
                 result = await self._dns_test(config)
             elif config.test_type == TestType.TRACEROUTE:
                 result = await self._traceroute_test(config)
+            elif config.test_type == TestType.SPEEDTEST_OOKLA:
+                result = await self.speedtest_ookla()
+            elif config.test_type == TestType.SPEEDTEST_FAST:
+                result = await self.speedtest_fast()
+            elif config.test_type == TestType.IPERF3:
+                # Parse target as server:port or just server
+                if ':' in config.target:
+                    server, port = config.target.split(':', 1)
+                    port = int(port)
+                else:
+                    server = config.target
+                    port = 5201
+                result = await self.iperf3_test(server, port)
             else:
                 raise ValueError(f"Unknown test type: {config.test_type}")
             
@@ -184,3 +199,93 @@ class NetworkTester:
             return {"output": stdout.decode()}
         else:
             raise Exception(stderr.decode())
+
+    async def speedtest_ookla(self, server_id: Optional[str] = None) -> Dict[str, Any]:
+        """Run Ookla Speedtest CLI"""
+        try:
+            cmd = ['speedtest', '--accept-license', '--accept-gdpr', '--format=json']
+            if server_id:
+                cmd.extend(['--server-id', server_id])
+            
+            proc = await asyncio.create_subprocess_exec(
+                *cmd,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE
+            )
+            stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=120)
+            
+            if proc.returncode == 0:
+                data = json.loads(stdout.decode())
+                return {
+                    'download_mbps': data['download']['bandwidth'] * 8 / 1000000,
+                    'upload_mbps': data['upload']['bandwidth'] * 8 / 1000000,
+                    'ping_ms': data['ping']['latency'],
+                    'server': data['server']['name'],
+                    'server_id': data['server']['id'],
+                    'raw_data': data
+                }
+            else:
+                raise Exception(stderr.decode())
+        except Exception as e:
+            raise Exception(f"Speedtest failed: {str(e)}")
+
+    async def speedtest_fast(self) -> Dict[str, Any]:
+        """Run Fast.com CLI"""
+        try:
+            proc = await asyncio.create_subprocess_exec(
+                'fast', '--json',
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE
+            )
+            stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=120)
+            
+            if proc.returncode == 0:
+                output = stdout.decode().strip()
+                if output.startswith('{'):
+                    data = json.loads(output)
+                    return {
+                        'download_mbps': data.get('downloadSpeed', 0),
+                        'upload_mbps': data.get('uploadSpeed', 0),
+                        'raw_data': data
+                    }
+                else:
+                    # Parse text output
+                    download_match = re.search(r'(\d+\.?\d*)\s*Mbps', output)
+                    return {
+                        'download_mbps': float(download_match.group(1)) if download_match else 0,
+                        'upload_mbps': 0,
+                        'raw_output': output
+                    }
+            else:
+                raise Exception(stderr.decode())
+        except Exception as e:
+            raise Exception(f"Fast.com test failed: {str(e)}")
+
+    async def iperf3_test(self, server: str, port: int = 5201, duration: int = 10, reverse: bool = False) -> Dict[str, Any]:
+        """Run iPerf3 test"""
+        try:
+            cmd = ['iperf3', '-c', server, '-p', str(port), '-t', str(duration), '-J']
+            if reverse:
+                cmd.append('-R')
+            
+            proc = await asyncio.create_subprocess_exec(
+                *cmd,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE
+            )
+            stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=duration + 30)
+            
+            if proc.returncode == 0:
+                data = json.loads(stdout.decode())
+                return {
+                    'bandwidth_mbps': data['end']['sum_received']['bits_per_second'] / 1000000,
+                    'retransmits': data['end']['sum_sent'].get('retransmits', 0),
+                    'jitter_ms': data['end']['sum_received'].get('jitter_ms', 0),
+                    'packet_loss': data['end']['sum_received'].get('lost_percent', 0),
+                    'direction': 'download' if reverse else 'upload',
+                    'raw_data': data
+                }
+            else:
+                raise Exception(stderr.decode())
+        except Exception as e:
+            raise Exception(f"iPerf3 test failed: {str(e)}")

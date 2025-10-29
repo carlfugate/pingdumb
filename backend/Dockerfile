@@ -1,11 +1,26 @@
 FROM python:3.11-slim
 
-# Install network utilities
+# Install network utilities and dependencies
 RUN apt-get update && apt-get install -y \
     iputils-ping \
     traceroute \
     dnsutils \
+    curl \
+    wget \
+    iperf3 \
+    gnupg \
+    lsb-release \
     && rm -rf /var/lib/apt/lists/*
+
+# Install Speedtest CLI
+RUN curl -s https://packagecloud.io/install/repositories/ookla/speedtest-cli/script.deb.sh | bash && \
+    apt-get update && \
+    apt-get install -y speedtest
+
+# Install Node.js for Fast CLI
+RUN curl -fsSL https://deb.nodesource.com/setup_18.x | bash - && \
+    apt-get install -y nodejs && \
+    npm install -g fast-cli
 
 WORKDIR /app
 

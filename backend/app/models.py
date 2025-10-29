@@ -8,6 +8,9 @@ class TestType(str, Enum):
     HTTP = "http"
     DNS = "dns"
     TRACEROUTE = "traceroute"
+    SPEEDTEST_OOKLA = "speedtest_ookla"
+    SPEEDTEST_FAST = "speedtest_fast"
+    IPERF3 = "iperf3"
 
 @dataclass
 class TestConfig:

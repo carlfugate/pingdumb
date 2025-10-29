@@ -270,15 +270,15 @@ class NetworkTester:
                     raise Exception(f"API request failed with status {response.status}")
                 data = await response.json()
             
-            if not data or len(data) == 0:
+            if not data or 'targets' not in data or len(data['targets']) == 0:
                 raise Exception("No download URLs received from API")
             
             # Step 6: Download test files and measure speed
             download_speeds = []
             test_duration = 10  # seconds
             
-            for url_info in data[:3]:  # Use first 3 URLs
-                url = url_info['url']
+            for target in data['targets'][:3]:  # Use first 3 URLs
+                url = target['url']
                 
                 start_time = time.time()
                 bytes_downloaded = 0

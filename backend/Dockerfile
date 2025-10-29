@@ -17,11 +17,6 @@ RUN curl -s https://packagecloud.io/install/repositories/ookla/speedtest-cli/scr
     apt-get update && \
     apt-get install -y speedtest
 
-# Install Node.js for Fast CLI
-RUN curl -fsSL https://deb.nodesource.com/setup_18.x | bash - && \
-    apt-get install -y nodejs && \
-    npm install -g fast-cli
-
 WORKDIR /app
 
 COPY requirements.txt .

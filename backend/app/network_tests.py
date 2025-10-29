@@ -230,34 +230,66 @@ class NetworkTester:
             raise Exception(f"Speedtest failed: {str(e)}")
 
     async def speedtest_fast(self) -> Dict[str, Any]:
-        """Run Fast.com CLI"""
+        """Run Fast.com speedtest using HTTP approach"""
         try:
-            proc = await asyncio.create_subprocess_exec(
-                'fast', '--json',
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE
-            )
-            stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=120)
+            import time
             
-            if proc.returncode == 0:
-                output = stdout.decode().strip()
-                if output.startswith('{'):
-                    data = json.loads(output)
-                    return {
-                        'download_mbps': data.get('downloadSpeed', 0),
-                        'upload_mbps': data.get('uploadSpeed', 0),
-                        'raw_data': data
-                    }
-                else:
-                    # Parse text output
-                    download_match = re.search(r'(\d+\.?\d*)\s*Mbps', output)
-                    return {
-                        'download_mbps': float(download_match.group(1)) if download_match else 0,
-                        'upload_mbps': 0,
-                        'raw_output': output
-                    }
-            else:
-                raise Exception(stderr.decode())
+            # Get Fast.com token and URLs
+            session = await self.get_session()
+            
+            # Step 1: Get the token from Fast.com
+            async with session.get('https://fast.com/') as response:
+                html = await response.text()
+                
+            # Extract token from the HTML (simple regex approach)
+            import re
+            token_match = re.search(r'token:"([^"]+)"', html)
+            if not token_match:
+                raise Exception("Could not extract Fast.com token")
+            
+            token = token_match.group(1)
+            
+            # Step 2: Get download URLs
+            api_url = f'https://api.fast.com/netflix/speedtest/v2?https=true&token={token}&urlCount=3'
+            async with session.get(api_url) as response:
+                data = await response.json()
+            
+            if not data or len(data) == 0:
+                raise Exception("No download URLs received")
+            
+            # Step 3: Download test files and measure speed
+            download_speeds = []
+            test_duration = 10  # seconds
+            
+            for url_info in data[:3]:  # Use first 3 URLs
+                url = url_info['url']
+                
+                start_time = time.time()
+                bytes_downloaded = 0
+                
+                async with session.get(url) as response:
+                    async for chunk in response.content.iter_chunked(8192):
+                        bytes_downloaded += len(chunk)
+                        elapsed = time.time() - start_time
+                        
+                        # Stop after test duration
+                        if elapsed >= test_duration:
+                            break
+                
+                if elapsed > 0:
+                    speed_mbps = (bytes_downloaded * 8) / (elapsed * 1000000)  # Convert to Mbps
+                    download_speeds.append(speed_mbps)
+            
+            # Calculate average speed
+            avg_speed = sum(download_speeds) / len(download_speeds) if download_speeds else 0
+            
+            return {
+                'download_mbps': avg_speed,
+                'upload_mbps': 0,  # Fast.com primarily tests download
+                'test_duration': test_duration,
+                'urls_tested': len(download_speeds)
+            }
+            
         except Exception as e:
             raise Exception(f"Fast.com test failed: {str(e)}")
 

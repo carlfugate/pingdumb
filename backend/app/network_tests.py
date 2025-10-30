@@ -317,31 +317,50 @@ class NetworkTester:
         except Exception as e:
             raise Exception(f"Fast.com test failed: {str(e)}")
 
-    async def iperf3_test(self, server: str, port: int = 5201, duration: int = 10, reverse: bool = False) -> Dict[str, Any]:
-        """Run iPerf3 test"""
+    async def iperf3_test(self, server: str, port: int = 5201, duration: int = 10) -> Dict[str, Any]:
+        """Run iPerf3 test for both upload and download"""
         try:
-            cmd = ['iperf3', '-c', server, '-p', str(port), '-t', str(duration), '-J']
-            if reverse:
-                cmd.append('-R')
+            # Test upload (client to server)
+            upload_cmd = ['iperf3', '-c', server, '-p', str(port), '-t', str(duration), '-J']
             
             proc = await asyncio.create_subprocess_exec(
-                *cmd,
+                *upload_cmd,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE
             )
             stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=duration + 30)
             
-            if proc.returncode == 0:
-                data = json.loads(stdout.decode())
-                return {
-                    'bandwidth_mbps': data['end']['sum_received']['bits_per_second'] / 1000000,
-                    'retransmits': data['end']['sum_sent'].get('retransmits', 0),
-                    'jitter_ms': data['end']['sum_received'].get('jitter_ms', 0),
-                    'packet_loss': data['end']['sum_received'].get('lost_percent', 0),
-                    'direction': 'download' if reverse else 'upload',
-                    'raw_data': data
-                }
-            else:
-                raise Exception(stderr.decode())
+            if proc.returncode != 0:
+                raise Exception(f"Upload test failed: {stderr.decode()}")
+            
+            upload_data = json.loads(stdout.decode())
+            upload_mbps = upload_data['end']['sum_received']['bits_per_second'] / 1000000
+            
+            # Test download (server to client)
+            download_cmd = ['iperf3', '-c', server, '-p', str(port), '-t', str(duration), '-J', '-R']
+            
+            proc = await asyncio.create_subprocess_exec(
+                *download_cmd,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE
+            )
+            stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=duration + 30)
+            
+            if proc.returncode != 0:
+                raise Exception(f"Download test failed: {stderr.decode()}")
+            
+            download_data = json.loads(stdout.decode())
+            download_mbps = download_data['end']['sum_received']['bits_per_second'] / 1000000
+            
+            return {
+                'upload_mbps': upload_mbps,
+                'download_mbps': download_mbps,
+                'upload_retransmits': upload_data['end']['sum_sent'].get('retransmits', 0),
+                'download_retransmits': download_data['end']['sum_sent'].get('retransmits', 0),
+                'test_duration': duration * 2,  # Total time for both tests
+                'raw_upload': upload_data,
+                'raw_download': download_data
+            }
+            
         except Exception as e:
             raise Exception(f"iPerf3 test failed: {str(e)}")

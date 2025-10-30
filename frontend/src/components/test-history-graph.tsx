@@ -107,9 +107,10 @@ export function TestHistoryGraph({ config, results, globalTimeFrame }: TestHisto
       } else if (config.test_type === 'iperf3') {
         return {
           time,
-          bandwidth: r.data?.bandwidth_mbps || 0,
-          direction: r.data?.direction || 'unknown',
-          retransmits: r.data?.retransmits || 0,
+          upload: r.data?.upload_mbps || 0,
+          download: r.data?.download_mbps || 0,
+          upload_retransmits: r.data?.upload_retransmits || 0,
+          download_retransmits: r.data?.download_retransmits || 0,
           success: r.success
         }
       } else {
@@ -164,7 +165,7 @@ export function TestHistoryGraph({ config, results, globalTimeFrame }: TestHisto
     switch (config.test_type) {
       case 'speedtest_ookla': return `${config.name} - Download/Upload Speed`
       case 'speedtest_fast': return `${config.name} - Download Speed`
-      case 'iperf3': return `${config.name} - Bandwidth`
+      case 'iperf3': return `${config.name} - Upload/Download Speed`
       default: return `${config.name} - Response Time`
     }
   }
@@ -223,7 +224,8 @@ export function TestHistoryGraph({ config, results, globalTimeFrame }: TestHisto
                 } else if (config.test_type === 'speedtest_fast') {
                   return [`${value.toFixed(1)} Mbps`, 'Download']
                 } else if (config.test_type === 'iperf3') {
-                  return [`${value.toFixed(1)} Mbps`, 'Bandwidth']
+                  if (name === 'upload') return [`${value.toFixed(1)} Mbps`, 'Upload']
+                  if (name === 'download') return [`${value.toFixed(1)} Mbps`, 'Download']
                 } else {
                   const result = [`${value.toFixed(2)}ms`, 'Avg Response Time']
                   if (config.test_type === 'dns' && props.payload) {
@@ -271,14 +273,24 @@ export function TestHistoryGraph({ config, results, globalTimeFrame }: TestHisto
                 activeDot={{ r: 4 }}
               />
             ) : config.test_type === 'iperf3' ? (
-              <Line 
-                type="monotone" 
-                dataKey="bandwidth" 
-                stroke="#8b5cf6"
-                strokeWidth={2}
-                dot={{ r: 2 }}
-                activeDot={{ r: 4 }}
-              />
+              <>
+                <Line 
+                  type="monotone" 
+                  dataKey="upload" 
+                  stroke="#3b82f6"
+                  strokeWidth={2}
+                  dot={{ r: 2 }}
+                  activeDot={{ r: 4 }}
+                />
+                <Line 
+                  type="monotone" 
+                  dataKey="download" 
+                  stroke="#10b981"
+                  strokeWidth={2}
+                  dot={{ r: 2 }}
+                  activeDot={{ r: 4 }}
+                />
+              </>
             ) : (
               <Line 
                 type="monotone" 

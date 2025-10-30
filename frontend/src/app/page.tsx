@@ -200,7 +200,13 @@ export default function Dashboard() {
   }
 
   const getLatestResult = (configId: string) => {
-    return results.find(r => r.config_id === configId)
+    // Get all results for this config, sorted by timestamp (newest first)
+    const configResults = results
+      .filter(r => r.config_id === configId)
+      .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+    
+    // Return the most recent result (whether successful or failed)
+    return configResults[0]
   }
 
   const getStatusStats = () => {

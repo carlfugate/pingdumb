@@ -245,10 +245,64 @@ export default function Dashboard() {
     }
     
     if (result.config_id && configs.find(c => c.id === result.config_id)?.test_type === 'iperf3') {
-      return `${data.bandwidth_mbps?.toFixed(1)}Mbps ${data.direction} (${data.retransmits || 0} retx)`
+      if (!result.success && result.error) {
+        // Handle different error states with better messaging
+        if (result.error.includes('server is busy')) {
+          return 'Server busy - retrying...'
+        } else if (result.error.includes('retrying in')) {
+          const match = result.error.match(/retrying in (\d+) seconds/)
+          return match ? `Retrying in ${match[1]}s...` : 'Retrying...'
+        } else if (result.error.includes('after') && result.error.includes('retries')) {
+          return 'Server busy (max retries)'
+        } else if (result.error.includes('timed out')) {
+          return 'Connection timeout'
+        } else if (result.error.includes('Connection refused')) {
+          return 'Server offline'
+        } else if (result.error.includes('Cannot reach')) {
+          return 'Network unreachable'
+        } else if (result.error.includes('Cannot resolve')) {
+          return 'DNS resolution failed'
+        }
+        return 'Test failed'
+      }
+      
+      // Success case - show speeds
+      const upload = data.upload_mbps?.toFixed(1) || '0.0'
+      const download = data.download_mbps?.toFixed(1) || '0.0'
+      const retransmits = (data.upload_retransmits || 0) + (data.download_retransmits || 0)
+      
+      if (parseFloat(download) > 0) {
+        return `↑${upload}Mbps ↓${download}Mbps (${retransmits} retx)`
+      } else {
+        return `↑${upload}Mbps (${retransmits} retx)`
+      }
     }
     
     return 'Success'
+  }
+
+  const getStatusBadge = (result: TestResult, config: any) => {
+    if (!result) return null
+    
+    // Special handling for iPerf3 retry states
+    if (config.test_type === 'iperf3' && !result.success && result.error) {
+      if (result.error.includes('server is busy') || result.error.includes('retrying')) {
+        return <Badge variant="secondary" className="text-xs">RETRY</Badge>
+      } else if (result.error.includes('after') && result.error.includes('retries')) {
+        return <Badge variant="destructive" className="text-xs">BUSY</Badge>
+      } else if (result.error.includes('timed out')) {
+        return <Badge variant="destructive" className="text-xs">TIMEOUT</Badge>
+      } else if (result.error.includes('Connection refused')) {
+        return <Badge variant="destructive" className="text-xs">OFFLINE</Badge>
+      }
+    }
+    
+    // Default success/fail badges
+    return (
+      <Badge variant={result.success ? "default" : "destructive"} className="text-xs">
+        {result.success ? "OK" : "FAIL"}
+      </Badge>
+    )
   }
 
   const stats = getStatusStats()
@@ -365,9 +419,7 @@ export default function Dashboard() {
                           <div className="text-right">
                             {latestResult && (
                               <>
-                                <Badge variant={latestResult.success ? "default" : "destructive"} className="text-xs">
-                                  {latestResult.success ? "OK" : "FAIL"}
-                                </Badge>
+                                {getStatusBadge(latestResult, config)}
                                 {details && (
                                   <p className="text-xs text-muted-foreground mt-1">{details}</p>
                                 )}
@@ -519,9 +571,7 @@ export default function Dashboard() {
                         <div className="flex items-center space-x-4">
                           {latestResult && (
                             <div className="text-right">
-                              <Badge variant={latestResult.success ? "default" : "destructive"}>
-                                {latestResult.success ? "OK" : "FAIL"}
-                              </Badge>
+                              {getStatusBadge(latestResult, config)}
                               {details && (
                                 <p className="text-sm text-muted-foreground mt-1">
                                   {details}

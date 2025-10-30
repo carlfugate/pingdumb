@@ -333,10 +333,14 @@ class NetworkTester:
                 
                 if proc.returncode != 0:
                     error_msg = stderr.decode().strip()
+                    print(f"iPerf3 upload test failed with return code {proc.returncode}")
+                    print(f"Error message: {error_msg}")
                     if "Connection refused" in error_msg:
                         raise Exception(f"Cannot connect to iPerf3 server at {server}:{port} - server may not be running")
                     elif "No route to host" in error_msg:
                         raise Exception(f"Cannot reach iPerf3 server at {server}:{port} - check network connectivity")
+                    elif "Name or service not known" in error_msg:
+                        raise Exception(f"Cannot resolve hostname {server} - check DNS or use IP address")
                     else:
                         raise Exception(f"Upload test failed: {error_msg}")
                 

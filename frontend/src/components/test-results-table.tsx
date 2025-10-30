@@ -247,9 +247,14 @@ export function TestResultsTable({
           <div className="flex items-center space-x-2">
             <Activity className="w-4 h-4 text-green-600" />
             <div className="text-sm">
-              <div><strong>{data.bandwidth_mbps?.toFixed(1)}Mbps</strong> ({data.direction})</div>
+              <div>
+                <strong>↑{data.upload_mbps?.toFixed(1) || 0}Mbps</strong>
+                {data.download_mbps > 0 && (
+                  <span> <strong>↓{data.download_mbps?.toFixed(1)}Mbps</strong></span>
+                )}
+              </div>
               <div className="text-xs text-muted-foreground">
-                {data.retransmits || 0} retransmits, {data.jitter_ms?.toFixed(1)}ms jitter
+                {(data.upload_retransmits || 0) + (data.download_retransmits || 0)} retransmits
               </div>
             </div>
           </div>

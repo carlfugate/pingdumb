@@ -120,6 +120,25 @@ class Database:
         conn.close()
         return config
     
+    async def update_config(self, config: TestConfig) -> TestConfig:
+        """Update an existing test configuration"""
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        
+        # Prepare DNS servers JSON
+        dns_servers_json = json.dumps(config.dns_servers) if config.dns_servers else None
+        
+        cursor.execute('''
+            UPDATE test_configs 
+            SET name=?, test_type=?, target=?, interval=?, timeout=?, enabled=?, dns_servers=?
+            WHERE id=?
+        ''', (config.name, config.test_type, config.target, config.interval,
+              config.timeout, config.enabled, dns_servers_json, config.id))
+        
+        conn.commit()
+        conn.close()
+        return config
+    
     async def delete_config(self, config_id: str):
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()

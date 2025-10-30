@@ -323,43 +323,61 @@ class NetworkTester:
             # Test upload (client to server)
             upload_cmd = ['iperf3', '-c', server, '-p', str(port), '-t', str(duration), '-J']
             
-            proc = await asyncio.create_subprocess_exec(
-                *upload_cmd,
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE
-            )
-            stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=duration + 30)
+            try:
+                proc = await asyncio.create_subprocess_exec(
+                    *upload_cmd,
+                    stdout=asyncio.subprocess.PIPE,
+                    stderr=asyncio.subprocess.PIPE
+                )
+                stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=duration + 30)
+                
+                if proc.returncode != 0:
+                    error_msg = stderr.decode().strip()
+                    if "Connection refused" in error_msg:
+                        raise Exception(f"Cannot connect to iPerf3 server at {server}:{port} - server may not be running")
+                    elif "No route to host" in error_msg:
+                        raise Exception(f"Cannot reach iPerf3 server at {server}:{port} - check network connectivity")
+                    else:
+                        raise Exception(f"Upload test failed: {error_msg}")
+                
+                upload_data = json.loads(stdout.decode())
+                upload_mbps = upload_data['end']['sum_received']['bits_per_second'] / 1000000
+                
+            except asyncio.TimeoutError:
+                raise Exception(f"Upload test timed out after {duration + 30} seconds")
+            except json.JSONDecodeError:
+                raise Exception("Upload test returned invalid JSON data")
             
-            if proc.returncode != 0:
-                raise Exception(f"Upload test failed: {stderr.decode()}")
+            # Test download (server to client) - optional, don't fail if it doesn't work
+            download_mbps = 0
+            download_retransmits = 0
             
-            upload_data = json.loads(stdout.decode())
-            upload_mbps = upload_data['end']['sum_received']['bits_per_second'] / 1000000
-            
-            # Test download (server to client)
-            download_cmd = ['iperf3', '-c', server, '-p', str(port), '-t', str(duration), '-J', '-R']
-            
-            proc = await asyncio.create_subprocess_exec(
-                *download_cmd,
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE
-            )
-            stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=duration + 30)
-            
-            if proc.returncode != 0:
-                raise Exception(f"Download test failed: {stderr.decode()}")
-            
-            download_data = json.loads(stdout.decode())
-            download_mbps = download_data['end']['sum_received']['bits_per_second'] / 1000000
-            
+            try:
+                download_cmd = ['iperf3', '-c', server, '-p', str(port), '-t', str(duration), '-J', '-R']
+                
+                proc = await asyncio.create_subprocess_exec(
+                    *download_cmd,
+                    stdout=asyncio.subprocess.PIPE,
+                    stderr=asyncio.subprocess.PIPE
+                )
+                stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=duration + 30)
+                
+                if proc.returncode == 0:
+                    download_data = json.loads(stdout.decode())
+                    download_mbps = download_data['end']['sum_received']['bits_per_second'] / 1000000
+                    download_retransmits = download_data['end']['sum_sent'].get('retransmits', 0)
+                
+            except Exception:
+                # Download test failed, but that's OK - we still have upload results
+                pass
             return {
                 'upload_mbps': upload_mbps,
                 'download_mbps': download_mbps,
                 'upload_retransmits': upload_data['end']['sum_sent'].get('retransmits', 0),
-                'download_retransmits': download_data['end']['sum_sent'].get('retransmits', 0),
-                'test_duration': duration * 2,  # Total time for both tests
-                'raw_upload': upload_data,
-                'raw_download': download_data
+                'download_retransmits': download_retransmits,
+                'test_duration': duration,
+                'server': f"{server}:{port}",
+                'raw_upload': upload_data
             }
             
         except Exception as e:

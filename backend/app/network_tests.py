@@ -318,71 +318,105 @@ class NetworkTester:
             raise Exception(f"Fast.com test failed: {str(e)}")
 
     async def iperf3_test(self, server: str, port: int = 5201, duration: int = 10) -> Dict[str, Any]:
-        """Run iPerf3 test for both upload and download"""
-        try:
-            # Test upload (client to server)
-            upload_cmd = ['iperf3', '-c', server, '-p', str(port), '-t', str(duration), '-J']
-            
+        """Run iPerf3 test with retry logic for busy servers"""
+        max_retries = 3
+        base_delay = 5  # seconds
+        
+        for attempt in range(max_retries + 1):
             try:
-                proc = await asyncio.create_subprocess_exec(
-                    *upload_cmd,
-                    stdout=asyncio.subprocess.PIPE,
-                    stderr=asyncio.subprocess.PIPE
-                )
-                stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=duration + 30)
+                # Test upload (client to server)
+                upload_cmd = ['iperf3', '-c', server, '-p', str(port), '-t', str(duration), '-J']
                 
-                if proc.returncode != 0:
-                    error_msg = stderr.decode().strip()
-                    print(f"iPerf3 upload test failed with return code {proc.returncode}")
-                    print(f"Error message: {error_msg}")
-                    if "Connection refused" in error_msg:
-                        raise Exception(f"Cannot connect to iPerf3 server at {server}:{port} - server may not be running")
-                    elif "No route to host" in error_msg:
-                        raise Exception(f"Cannot reach iPerf3 server at {server}:{port} - check network connectivity")
-                    elif "Name or service not known" in error_msg:
-                        raise Exception(f"Cannot resolve hostname {server} - check DNS or use IP address")
+                try:
+                    proc = await asyncio.create_subprocess_exec(
+                        *upload_cmd,
+                        stdout=asyncio.subprocess.PIPE,
+                        stderr=asyncio.subprocess.PIPE
+                    )
+                    stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=duration + 30)
+                    
+                    if proc.returncode != 0:
+                        error_msg = stderr.decode().strip()
+                        print(f"iPerf3 upload test failed with return code {proc.returncode}")
+                        print(f"Error message: {error_msg}")
+                        
+                        # Check if it's a JSON error response (server busy)
+                        if stdout:
+                            try:
+                                error_data = json.loads(stdout.decode())
+                                if 'error' in error_data and 'server is busy' in error_data['error'].lower():
+                                    if attempt < max_retries:
+                                        delay = base_delay * (2 ** attempt)  # Exponential backoff
+                                        print(f"Server busy, retrying in {delay} seconds (attempt {attempt + 1}/{max_retries + 1})")
+                                        await asyncio.sleep(delay)
+                                        continue
+                                    else:
+                                        raise Exception(f"Server busy after {max_retries} retries: {error_data['error']}")
+                            except json.JSONDecodeError:
+                                pass
+                        
+                        if "Connection refused" in error_msg:
+                            raise Exception(f"Cannot connect to iPerf3 server at {server}:{port} - server may not be running")
+                        elif "No route to host" in error_msg:
+                            raise Exception(f"Cannot reach iPerf3 server at {server}:{port} - check network connectivity")
+                        elif "Name or service not known" in error_msg:
+                            raise Exception(f"Cannot resolve hostname {server} - check DNS or use IP address")
+                        else:
+                            raise Exception(f"Upload test failed: {error_msg}")
+                    
+                    upload_data = json.loads(stdout.decode())
+                    upload_mbps = upload_data['end']['sum_received']['bits_per_second'] / 1000000
+                    break  # Success, exit retry loop
+                    
+                except asyncio.TimeoutError:
+                    if attempt < max_retries:
+                        delay = base_delay * (2 ** attempt)
+                        print(f"Upload test timed out, retrying in {delay} seconds (attempt {attempt + 1}/{max_retries + 1})")
+                        await asyncio.sleep(delay)
+                        continue
                     else:
-                        raise Exception(f"Upload test failed: {error_msg}")
+                        raise Exception(f"Upload test timed out after {max_retries} retries")
+                except json.JSONDecodeError:
+                    raise Exception("Upload test returned invalid JSON data")
                 
-                upload_data = json.loads(stdout.decode())
-                upload_mbps = upload_data['end']['sum_received']['bits_per_second'] / 1000000
-                
-            except asyncio.TimeoutError:
-                raise Exception(f"Upload test timed out after {duration + 30} seconds")
-            except json.JSONDecodeError:
-                raise Exception("Upload test returned invalid JSON data")
+            except Exception as e:
+                if attempt < max_retries and ("server is busy" in str(e).lower() or "timed out" in str(e).lower()):
+                    delay = base_delay * (2 ** attempt)
+                    print(f"Test failed: {e}, retrying in {delay} seconds (attempt {attempt + 1}/{max_retries + 1})")
+                    await asyncio.sleep(delay)
+                    continue
+                else:
+                    raise e
+        
+        # Try download test, but don't fail if it doesn't work
+        download_mbps = 0
+        download_retransmits = 0
+        
+        try:
+            download_cmd = ['iperf3', '-c', server, '-p', str(port), '-t', str(duration), '-J', '-R']
             
-            # Test download (server to client) - optional, don't fail if it doesn't work
-            download_mbps = 0
-            download_retransmits = 0
+            proc = await asyncio.create_subprocess_exec(
+                *download_cmd,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE
+            )
+            stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=duration + 30)
             
-            try:
-                download_cmd = ['iperf3', '-c', server, '-p', str(port), '-t', str(duration), '-J', '-R']
-                
-                proc = await asyncio.create_subprocess_exec(
-                    *download_cmd,
-                    stdout=asyncio.subprocess.PIPE,
-                    stderr=asyncio.subprocess.PIPE
-                )
-                stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=duration + 30)
-                
-                if proc.returncode == 0:
-                    download_data = json.loads(stdout.decode())
-                    download_mbps = download_data['end']['sum_received']['bits_per_second'] / 1000000
-                    download_retransmits = download_data['end']['sum_sent'].get('retransmits', 0)
-                
-            except Exception:
-                # Download test failed, but that's OK - we still have upload results
-                pass
-            return {
-                'upload_mbps': upload_mbps,
-                'download_mbps': download_mbps,
-                'upload_retransmits': upload_data['end']['sum_sent'].get('retransmits', 0),
-                'download_retransmits': download_retransmits,
-                'test_duration': duration,
-                'server': f"{server}:{port}",
-                'raw_upload': upload_data
-            }
+            if proc.returncode == 0:
+                download_data = json.loads(stdout.decode())
+                download_mbps = download_data['end']['sum_received']['bits_per_second'] / 1000000
+                download_retransmits = download_data['end']['sum_sent'].get('retransmits', 0)
             
-        except Exception as e:
-            raise Exception(f"iPerf3 test failed: {str(e)}")
+        except Exception:
+            # Download test failed, but that's OK - we still have upload results
+            pass
+        
+        return {
+            'upload_mbps': upload_mbps,
+            'download_mbps': download_mbps,
+            'upload_retransmits': upload_data['end']['sum_sent'].get('retransmits', 0),
+            'download_retransmits': download_retransmits,
+            'test_duration': duration,
+            'server': f"{server}:{port}",
+            'raw_upload': upload_data
+        }

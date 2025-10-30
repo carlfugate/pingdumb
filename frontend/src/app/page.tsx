@@ -347,7 +347,7 @@ export default function Dashboard() {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-3">
-                    {configs.slice(0, 6).map((config) => {
+                    {configs.filter(c => c.enabled).map((config) => {
                       const latestResult = getLatestResult(config.id)
                       const details = latestResult ? formatTestDetails(latestResult) : null
                       
